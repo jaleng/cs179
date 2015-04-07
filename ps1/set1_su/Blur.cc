@@ -196,7 +196,7 @@ int large_gauss_test(int argc, char **argv){
                cudaMemcpyHostToDevice);
 
     float *dev_out_data;
-    
+
     // Allocate device memory for output
     cudaMalloc(&dev_out_data, N * sizeof(float));
 
@@ -268,7 +268,7 @@ int large_gauss_test(int argc, char **argv){
         const unsigned int local_size = atoi(argv[1]);
         const unsigned int max_blocks = atoi(argv[2]);
         const unsigned int blocks = std::min( max_blocks, 
-            (unsigned int) ceil(N/local_size) );
+            (unsigned int) ceil(N/(float)local_size) );
 
 
 
