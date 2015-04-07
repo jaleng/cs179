@@ -74,6 +74,7 @@ void test3(){
         *(i+a)=i;
 }
 
+// CORRECTED VERSION
 void test3_c(){
     // allocate an appropriate size for int[1000]
     int i, *a = (int*) malloc(1000 * sizeof(int));
@@ -101,6 +102,7 @@ void test4(){
     a[1][1] = 5;
 }
 
+// CORRECTED VERSION
 void test4_c() {
     int **a = (int**) malloc(3*sizeof(int*));
 
@@ -191,8 +193,18 @@ Suppose that c is close to 1, and we only require an approximation to y[n]. How 
 Hint: If c is close to 1, then 1-c is close to 0. If you expand the recurrence relation a bit, what happens to the contribution (to y[n]) of the terms y[n-k] as k increases?
 
 Answer:
-y[n] = c x[n] + y[n - 1] - c * y[n-1]
-y[n] = c x[n] + (c x[n-1] + y[n-2] - c y[n-2])
-
 y[n] = c x[n] + (1-c) y[n-1]
-y[n-1] = c x[n-1] + (1-c) y[n-2]
+y[n] = c x[n] + (1-c) (c x[n-1] + (1-c) y[n-2])
+y[n] = c x[n] + (1-c) (c x[n-1]) + (1-c)^2 y[n-2]
+y[n] = c x[n] + (1-c) (c x[n-1]) + (1-c)^2 (c x[n-2] + (1-c) y[n-3])
+y[n] = c x[n] + (1-c) (c x[n-1]) + (1-c)^2 (c x[n-2]) + (1-c)^3 y[n-3]
+...
+y[n] = Sum(i=0 to i=n, (1-c)^(i) c x[n-i])
+
+(1-c) is close to 0, so (1-c)^N diminishes quickly as N is increased.
+Choose a suitable N such that (1-c)^N * (any element in x) << (any element in x),
+then approximate y[n] as Sum(i=0 to i=N, (1-c)^i c x[n-i]).
+
+For example, choosing N = 2, we can approximate
+y[n] approx= c x[n] + (1-c) (c x[n-1])
+
