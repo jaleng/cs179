@@ -19,7 +19,7 @@ void test1_c(){
 	*a = 3;
 	*a = *a + 2;
 	printf("%d", *a);
-    free(a);
+    free(a); // free to prevent memory leaks
 }
 
 1.2
@@ -53,6 +53,8 @@ void test2_c(){
     }
     *a = 2;
     *b = 3;
+    free(a); // free to prevent memory leaks
+    free(b);
 }
 
 
@@ -86,7 +88,7 @@ void test3_c(){
     for (i = 0; i < 1000; i++)
         *(a+i)=i; // Do pointer arithmetic to account for size
                   // of pointer value
-    free(a);
+    free(a); // free to prevent memory leaks
 }
 
 
@@ -139,6 +141,7 @@ void test5(){
     // Need to free a to prevent memory leak.
 }
 
+// CORRECTED VERSION
 void test5_c(){
     int *a = (int*) malloc(sizeof(int));
     // Check if memory allocation succeeded
@@ -207,4 +210,4 @@ then approximate y[n] as Sum(i=0 to i=N, (1-c)^i c x[n-i]).
 
 For example, choosing N = 2, we can approximate
 y[n] approx= c x[n] + (1-c) (c x[n-1])
-
+This is parallelizable because it does not depend on any other value in y.
