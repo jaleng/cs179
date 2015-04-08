@@ -286,9 +286,13 @@ int large_gauss_test(int argc, char **argv){
 
         /* NOTE: This is a function in the Blur_cuda.cu file,
         where you'll fill in the kernel call. */
-        cudaCallBlurKernel(blocks, local_size, 
-            dev_input_data, dev_blur_v, dev_out_data,
-            N, GAUSSIAN_SIZE);
+        gpuErrchk(cudaCallBlurKernel(
+                    blocks, 
+                    local_size, 
+                    dev_input_data, 
+                    dev_blur_v, 
+                    dev_out_data,
+                    N, GAUSSIAN_SIZE));
 
 
         // Check for errors on kernel call
