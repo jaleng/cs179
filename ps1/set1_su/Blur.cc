@@ -178,7 +178,7 @@ int large_gauss_test(int argc, char **argv){
     */
 
     // Allocate device memory for input data
-    cudaMalloc(&dev_input_data, sizeof(float) * N);
+    gpuErrchk(cudaMalloc(&dev_input_data, sizeof(float) * N));
 
 
 
@@ -190,15 +190,15 @@ int large_gauss_test(int argc, char **argv){
     */
 
     // Allocate device memory for blur
-    cudaMalloc(&dev_blur_v, sizeof(float) * GAUSSIAN_SIZE);
+    gpuErrchk(cudaMalloc(&dev_blur_v, sizeof(float) * GAUSSIAN_SIZE));
     // Copy blur from host to device
-    cudaMemcpy(dev_blur_v, blur_v, sizeof(float) * GAUSSIAN_SIZE,
-               cudaMemcpyHostToDevice);
+    gpuErrchk(cudaMemcpy(dev_blur_v, blur_v, sizeof(float) * GAUSSIAN_SIZE,
+               cudaMemcpyHostToDevice));
 
     float *dev_out_data;
 
     // Allocate device memory for output
-    cudaMalloc(&dev_out_data, N * sizeof(float));
+    gpuErrchk(cudaMalloc(&dev_out_data, N * sizeof(float)));
 
     /* Iterate through each audio channel (e.g. 2 iterations for 
     stereo files) */
@@ -280,8 +280,8 @@ int large_gauss_test(int argc, char **argv){
 
 
         // Copy input data from host to device
-        cudaMemcpy(dev_input_data, input_data, sizeof(float) * N,
-                   cudaMemcpyHostToDevice);
+        gpuErrchk(cudaMemcpy(dev_input_data, input_data, sizeof(float) * N,
+                   cudaMemcpyHostToDevice));
 
 
         /* NOTE: This is a function in the Blur_cuda.cu file,
@@ -300,8 +300,8 @@ int large_gauss_test(int argc, char **argv){
         }
 
         // Copy output signal back from device to host
-        cudaMemcpy(output_data, dev_out_data, sizeof(float) * N,
-                   cudaMemcpyDeviceToHost);
+        gpuErrchk(cudaMemcpy(output_data, dev_out_data, sizeof(float) * N,
+                   cudaMemcpyDeviceToHost));
         
 
         // Stop timer
@@ -352,9 +352,9 @@ int large_gauss_test(int argc, char **argv){
     }
 
     /* Free all allocated memory on the GPU. */
-    cudaFree(dev_input_data);
-    cudaFree(dev_blur_v);
-    cudaFree(dev_out_data);
+    gpuErrchk(cudaFree(dev_input_data));
+    gpuErrchk(cudaFree(dev_blur_v));
+    gpuErrchk(cudaFree(dev_out_data));
 
     // Free memory on host
     free(input_data);
