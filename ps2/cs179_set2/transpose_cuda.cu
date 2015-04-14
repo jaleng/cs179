@@ -90,11 +90,11 @@ void cudaTranspose(const float *d_input,
   } else if (type == SHMEM) {
     dim3 blockSize(64, 16);
     dim3 gridSize(n / 64, n / 64);
-    naiveTransposeKernel<<<gridSize, blockSize>>>(d_input, d_output, n);
+    shmemTransposeKernel<<<gridSize, blockSize>>>(d_input, d_output, n);
   } else if (type == OPTIMAL) {
     dim3 blockSize(64, 16);
     dim3 gridSize(n / 64, n / 64);
-    naiveTransposeKernel<<<gridSize, blockSize>>>(d_input, d_output, n);
+    optimalTransposeKernel<<<gridSize, blockSize>>>(d_input, d_output, n);
   } else {
     // unknown type
     assert(false);
