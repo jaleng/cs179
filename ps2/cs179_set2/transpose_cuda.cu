@@ -60,25 +60,25 @@ void shmemTransposeKernel(const float *input, float *output, int n) {
   const int i = threadIdx.x + 64 * blockIdx.x;
   int j = 4 * threadIdx.y + 64 * blockIdx.y;
   const int end_j = j + 4;
+  int dj = 4 * threadIdx.y;
+  int di = threadIdx.x;
 
-  for (; j < end_j; j++) {
+  for (; j < end_j; j++, dj++) {
     //output[j + n * i] = input[i + n * j];
-    data[(j - 64 * blockIdx.y) + 65 * threadIdx.x] = input[i + n * j];
+    data[dj + (65 * di)] = input[i + n * j];
   }
   __syncthreads();
 
-  int col_offset = 65 * 4 * threadIdx.y;
-  int idx = threadIdx.x + col_offset;
-
-  //int i2 = threadIdx.x + 64 * blockIdx.x;
-  //int j2 = 4 * threadIdx.y + 64 * blockIdx.y;
-
-  int beg_block = n * 64 * blockIdx.x + 64 * blockIdx.x;
-
-  for (int c = 0; c < 4; c++) {
-    output[beg_block + n * (threadIdx.y + c) + threadIdx.x] = data[idx];
-    idx += 65;
+  j = 4 * threadIdx.y + 64 * blockIdx.y;
+  dj = 4 * threadIdx.y;
+  int j0 = 64 * blockIdx.y;
+  int i0 = 64 * blockIdx.x;
+  for (; j < end_j; j++, dj++) {
+    //output[j + n * i] = input[i + n * j];
+    output[j0 + n * i0 + di + n * dj] = data[di + (65 * dj)];
   }
+
+
 }
 
 __global__
