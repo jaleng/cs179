@@ -42,6 +42,8 @@ void naiveTransposeKernel(const float *input, float *output, int n) {
   const int end_j = j + 4;
 
   for (; j < end_j; j++) {
+    // write output is non-coalesced, accesses are n floats apart,
+    // so each will hit a new cache line. (32 cache lines touched).
     output[j + n * i] = input[i + n * j];
   }
 }
@@ -53,14 +55,29 @@ void shmemTransposeKernel(const float *input, float *output, int n) {
   // memory bank conflicts (0 bank conflicts should be possible using
   // padding). Again, comment on all sub-optimal accesses.
 
-  // __shared__ float data[???];
+  __shared__ float data[4160];
 
   const int i = threadIdx.x + 64 * blockIdx.x;
   int j = 4 * threadIdx.y + 64 * blockIdx.y;
   const int end_j = j + 4;
 
   for (; j < end_j; j++) {
-    output[j + n * i] = input[i + n * j];
+    //output[j + n * i] = input[i + n * j];
+    data[(j - 64 * blockIdx.y) + 65 * threadIdx.x] = input[i + n * j];
+  }
+  __syncthreads();
+
+  col_offset = 65 * 4 * threadIdx.y;
+  idx = threadIdx.x + col_offset;
+
+  //int i2 = threadIdx.x + 64 * blockIdx.x;
+  //int j2 = 4 * threadIdx.y + 64 * blockIdx.y;
+
+  int beg_block = n * 64 * blockIdx.x + 64 * blockIdx.x;
+
+  for (c = 0; c < 4; c++) {
+    output[beg_block + n * (threadIdx.y + c)] = data[idx];
+    idx += 65;
   }
 }
 
