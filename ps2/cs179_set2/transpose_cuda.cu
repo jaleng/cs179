@@ -116,8 +116,6 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   data[d_idx3] = i3;
   data[d_idx4] = i4;
 
-  __syncthreads();
-
   dj = 4 * threadIdx.y;
   int j0 = 64 * blockIdx.y;
   int i0 = 64 * blockIdx.x;
@@ -133,6 +131,8 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   int o_idx2 = o_idx1 + n;
   int o_idx3 = o_idx1 + n + n;
   int o_idx4 = o_idx1 + 3 * n;
+
+  __syncthreads();
 
   float d1 = data[d_idx1];
   float d2 = data[d_idx2];
