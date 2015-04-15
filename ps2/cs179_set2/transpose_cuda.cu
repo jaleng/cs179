@@ -121,10 +121,10 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   int i0 = 64 * blockIdx.x;
   int block_start = j0 + n * i0 + di;
 
-  int d_idx1 = di + (65 * dj); 
-  int d_idx2 = di + (65 * (dj + 1));
-  int d_idx3 = di + (65 * (dj + 2));
-  int d_idx4 = di + (65 * (dj + 3));
+  d_idx1 = di + (65 * dj); 
+  d_idx2 = di + (65 * (dj + 1));
+  d_idx3 = di + (65 * (dj + 2));
+  d_idx4 = di + (65 * (dj + 3));
 
   int o_idx1 = block_start + n * dj;
   int o_idx2 = block_start + n * (dj + 1);
