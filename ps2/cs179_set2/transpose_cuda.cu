@@ -67,8 +67,8 @@ void shmemTransposeKernel(const float *input, float *output, int n) {
   }
   __syncthreads();
 
-  col_offset = 65 * 4 * threadIdx.y;
-  idx = threadIdx.x + col_offset;
+  int col_offset = 65 * 4 * threadIdx.y;
+  int idx = threadIdx.x + col_offset;
 
   //int i2 = threadIdx.x + 64 * blockIdx.x;
   //int j2 = 4 * threadIdx.y + 64 * blockIdx.y;
