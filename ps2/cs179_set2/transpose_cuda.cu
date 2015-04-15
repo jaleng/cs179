@@ -95,6 +95,9 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   int di = threadIdx.x;
 
   int i_idx1 = i + n * j;
+  int ditimes65 = 65 * di;
+  int d_idx1 = dj + ditimes65;
+
   int i_idx2 = i_idx1 + n;
   int i_idx3 = i_idx1 + n + n;
   int i_idx4 = i_idx1 + n * 3;
@@ -104,8 +107,6 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   float i3 = input[i_idx3];
   float i4 = input[i_idx4];
 
-  int ditimes65 = 65 * di;
-  int d_idx1 = dj + ditimes65;
   int d_idx2 = d_idx1 + 1;
   int d_idx3 = d_idx1 + 2;
   int d_idx4 = d_idx1 + 3;
@@ -123,11 +124,12 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   int block_start = j0 + n * i0 + di;
 
   d_idx1 = di + (65 * dj); 
+  int o_idx1 = block_start + n * dj;
+
   d_idx2 = d_idx1 + 65;
   d_idx3 = d_idx1 + 130;
   d_idx4 = d_idx1 + 195;
 
-  int o_idx1 = block_start + n * dj;
   int o_idx2 = o_idx1 + n;
   int o_idx3 = o_idx1 + n + n;
   int o_idx4 = o_idx1 + 3 * n;
