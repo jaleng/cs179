@@ -116,7 +116,7 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   data[d_idx4] = i4;
 
   __syncthreads();
-
+/*
   dj = 4 * threadIdx.y;
   int j0 = 64 * blockIdx.y;
   int i0 = 64 * blockIdx.x;
@@ -141,6 +141,15 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   output[o_idx2] = d2;
   output[o_idx3] = d3;
   output[o_idx4] = d4;
+*/
+  j = 4 * threadIdx.y + 64 * blockIdx.y;
+  dj = 4 * threadIdx.y;
+  int j0 = 64 * blockIdx.y;
+  int i0 = 64 * blockIdx.x;
+  for (; j < end_j; j++, dj++) {
+    //output[j + n * i] = input[i + n * j];
+    output[j0 + n * i0 + di + n * dj] = data[di + (65 * dj)];
+  }
 }
 
 void cudaTranspose(const float *d_input,
