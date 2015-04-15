@@ -87,13 +87,59 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   // Use any optimization tricks discussed so far to improve performance.
   // Consider ILP and loop unrolling.
 
+  __shared__ float data[4160];
+
   const int i = threadIdx.x + 64 * blockIdx.x;
   int j = 4 * threadIdx.y + 64 * blockIdx.y;
-  const int end_j = j + 4;
+  int dj = 4 * threadIdx.y;
+  int di = threadIdx.x;
 
-  for (; j < end_j; j++) {
-    output[j + n * i] = input[i + n * j];
-  }
+  int i_idx1 = i + n * j;
+  int i_idx2 = i + n * (j + 1);
+  int i_idx3 = i + n * (j + 2);
+  int i_idx4 = i + n * (j + 3);
+
+  int d_idx1 = dj + (65 * di);
+  int d_idx2 = dj + (65 * (di + 1));
+  int d_idx3 = dj + (65 * (di + 2));
+  int d_idx4 = dj + (65 * (di + 3));
+
+  int i1 = input[i_idx1];
+  int i2 = input[i_idx2];
+  int i3 = input[i_idx3];
+  int i4 = input[i_idx4];
+
+  data[d_idx1] = i1;
+  data[d_idx2] = i2;
+  data[d_idx3] = i3;
+  data[d_idx4] = i4;
+
+  __syncthreads();
+
+  dj = 4 * threadIdx.y;
+  int j0 = 64 * blockIdx.y;
+  int i0 = 64 * blockIdx.x;
+  int block_start = j0 + n * i0 + di;
+
+  int d_idx1 = di + (65 * dj); 
+  int d_idx2 = di + (65 * (dj + 1));
+  int d_idx3 = di + (65 * (dj + 2));
+  int d_idx4 = di + (65 * (dj + 3));
+
+  int o_idx1 = block_start + n * dj;
+  int o_idx2 = block_start + n * (dj + 1);
+  int o_idx3 = block_start + n * (dj + 2);
+  int o_idx4 = block_start + n * (dj + 3);
+
+  int d1 = data[d_idx1];
+  int d2 = data[d_idx2];
+  int d3 = data[d_idx3];
+  int d4 = data[d_idx4];
+
+  output[o_idx1] = d1;
+  output[o_idx2] = d2;
+  output[o_idx3] = d3;
+  output[o_idx4] = d4;
 }
 
 void cudaTranspose(const float *d_input,
