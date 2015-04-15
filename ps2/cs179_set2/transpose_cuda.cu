@@ -99,10 +99,11 @@ void optimalTransposeKernel(const float *input, float *output, int n) {
   int i_idx3 = i + n * (j + 2);
   int i_idx4 = i + n * (j + 3);
 
-  int d_idx1 = dj + (65 * di);
-  int d_idx2 = dj + (65 * (di + 1));
-  int d_idx3 = dj + (65 * (di + 2));
-  int d_idx4 = dj + (65 * (di + 3));
+  int ditimes65 = 65 * di;
+  int d_idx1 = dj + ditimes65;
+  int d_idx2 = dj + 1 + ditimes65;
+  int d_idx3 = dj + 2 + ditimes65;
+  int d_idx4 = dj + 3 + ditimes65;
 
   int i1 = input[i_idx1];
   int i2 = input[i_idx2];
