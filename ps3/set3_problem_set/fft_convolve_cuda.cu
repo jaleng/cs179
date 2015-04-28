@@ -140,7 +140,7 @@ cudaDivideKernel(cufftComplex *out_data, float *max_abs_val,
     */
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     while (i < padded_length) {
-        max_val = *max_abs_val;
+        float max_val = *max_abs_val;
         cufftComplex val = out_data[i];
         val.x /= max_val;
         val.y /= max_val;
