@@ -57,7 +57,9 @@ cudaProdScaleKernel(const cufftComplex *raw_data, const cufftComplex *impulse_v,
     while (i < padded_length) {
         cufftComplex v1 = raw_data[i];
         cufftComplex v2 = impulse_v[i];
-        cufftComplex v3 (v1.x * v2.x - v1.y * v2.y, v1.x * v2.y + v1.y * v2.x);
+        cufftComplex v3;
+        v3.x = v1.x * v2.x - v1.y * v2.y,
+        v3.y = v1.x * v2.y + v1.y * v2.x;
 
         out_data[i] = v3;
 
