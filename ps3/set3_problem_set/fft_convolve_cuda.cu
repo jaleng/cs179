@@ -115,10 +115,10 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
     __syncthreads();
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    for (unsigned int s_idx = blockDim.x/2; s > 0; s >>= 1) {
+    for (unsigned int s_idx = blockDim.x/2; s_idx > 0; s_idx >>= 1) {
         if (i < s_idx) {
             float v1 = smem[i];
-            float v2 = smem[i + s];
+            float v2 = smem[i + s_idx];
             smem[i] = (v1 > v2) ? v1 : v2;
         }
         __syncthreads();
