@@ -250,7 +250,7 @@ int large_gauss_test(int argc, char **argv){
 
     // Allocate dev_input_data
     gpuErrchk(cudaMalloc((void**) &dev_input_data,
-                         sizeof(cufftComplex) * N));
+                         sizeof(cufftComplex) * padded_length));
 
     // Allocate dev_impulse_v
     gpuErrchk(cudaMalloc((void**) &dev_impulse_v,
