@@ -82,6 +82,53 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
         compare-float-in-cuda)
 
     */
+    extern __shared__ float smem[];
+
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    while (i < padded_length) {
+
+        int laneId = threadIdx.x & 0x1f;
+        float val = out_data[i].x;
+
+        // Butterfly warp shuffle pattern to get max of warp items
+        for (int j = 16; j >= 1; j /= 2) {
+            float otherval = __shfl_xor(val, j, 32);
+            val = (val > otherval) ? val : otherval;
+        }
+
+        int warpIdx = i >> 5;
+        s[warpIdx] = val;
+        i += gridDim.x * blockDim.x;
+    }
+    
+    __syncthreads();
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+    for (unsigned int s_idx = blockDim.x/2; s > 0; s >>= 1) {
+        if (i < s_idx) {
+            float v1 = smem[i];
+            float v2 = smem[i + s];
+            smem[i] = (v1 > v2) ? v1 : v2;
+        }
+        __syncthreads();
+    }
+
+    if (i == 0)
+        atomicMax(max_abs_val, smem[0]);
+    
+    /* REFERENCE
+    while (i < N) {
+        float output = 0.0;
+        int endj = i < blur_v_size ? i + 1 : blur_v_size;
+
+        for (int j = 0; j < endj; ++j) {
+            output += raw_data[i - j] * blur_v[j];
+        }
+
+        out_data[i] = output;
+        i += gridDim.x * blockDim.x;
+    }
+    REFERENCE */
 
 
 }

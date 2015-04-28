@@ -466,11 +466,12 @@ int large_gauss_test(int argc, char **argv){
 
         /* TODO: Run the inverse DFT on the output signal. 
         (Do this in-place.) */
-
+        cufftExecC2C(plan_input, dev_out_data, dev_out_data, CUFFT_INVERSE);
 
 
         /* TODO: Destroy the cuFFT plan. */
-
+        cufftDestroy(plan_input);
+        cufftDestroy(plan_impulse);
 
         // For testing and timing-control purposes only
         gpuErrchk( cudaMemcpy( output_data_testarr, dev_out_data, padded_length * sizeof(cufftComplex), cudaMemcpyDeviceToHost));
@@ -570,10 +571,11 @@ int large_gauss_test(int argc, char **argv){
 
         /* TODO 2: Allocate memory to store the maximum magnitude found. 
         (You only need enough space for one floating-point number.) */
+        gpuErrchk(cudaMalloc((void**) &dev_max_abs_val, sizeof(float)));
 
         /* TODO 2: Set it to 0 in preparation for running. 
         (Recommend using cudaMemset) */
-
+        gpuErrchk(cudaMemset(dev_max_abs_val, 0, sizeof(float)));
 
         /* NOTE: This is a function in the fft_convolve_cuda.cu file,
         where you'll fill in the kernel call for finding the maximum
@@ -620,7 +622,10 @@ int large_gauss_test(int argc, char **argv){
 
         Note that we have a padded-length signal, so be careful of the
         size of the memory copy. */
-
+        gpuErrchk(cudaMemcpy(output_data,
+                             dev_out_data,
+                             sizeof(cufftComplex) * padded_length,
+                             cudaMemcpyDeviceToHost));
 
         cout << endl;
         cout << "CPU normalization constant: " << max_abs_val << endl;
