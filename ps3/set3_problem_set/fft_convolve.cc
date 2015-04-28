@@ -401,7 +401,7 @@ int large_gauss_test(int argc, char **argv){
         so be careful with the size of your memory copy. */
         gpuErrchk(cudaMemcpy(dev_input_data,
                              input_data,
-                             sizeof(cufftComplex) * padded_length,
+                             sizeof(cufftComplex) * N,
                              cudaMemcpyHostToDevice));
 
 
@@ -416,7 +416,7 @@ int large_gauss_test(int argc, char **argv){
         */
         gpuErrchk(cudaMemcpy(dev_impulse_v,
                              impulse_data,
-                             sizeof(cufftComplex) * padded_length,
+                             sizeof(cufftComplex) * impulse_length,
                              cudaMemcpyHostToDevice));
 
 
