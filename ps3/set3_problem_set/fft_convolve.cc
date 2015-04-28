@@ -21,7 +21,7 @@ using std::endl;
 
 const float PI = 3.14159265358979;
 
-#define AUDIO_ON 1
+#define AUDIO_ON 0
 
 #if AUDIO_ON
     #include <sndfile.h>
@@ -441,7 +441,7 @@ int large_gauss_test(int argc, char **argv){
         (You can use the same plan for both, as is done in the lecture examples.)
         */
         cufftHandle plan;
-        cufftPlan1d(&plan, padded_length, 1);
+        cufftPlan1d(&plan, padded_length, CUFFT_C2C, 1);
 
         /* TODO: Run the forward DFT on the input signal and the impulse response. 
         (Do these in-place.) */
