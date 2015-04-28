@@ -51,8 +51,18 @@ cudaProdScaleKernel(const cufftComplex *raw_data, const cufftComplex *impulse_v,
 
     As in Assignment 1 and Week 1, remember to make your implementation
     resilient to varying numbers of threads.
-
     */
+
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    while (i < padded_length) {
+        cufftComplex v1 = raw_data[i];
+        cufftComplex v2 = impulse_v[i];
+        cufftComplex v3 (v1.x * v2.x - v1.y * v2.y, v1.x * v2.y + v1.y * v2.x);
+
+        out_data[i] = v3;
+
+        i += gridDim.x * blockDim.x;
+    }
 }
 
 __global__
@@ -87,7 +97,6 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     while (i < padded_length) {
 
-        int laneId = threadIdx.x & 0x1f;
         float val = out_data[i].x;
 
         // Butterfly warp shuffle pattern to get max of warp items
@@ -97,7 +106,7 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
         }
 
         int warpIdx = i >> 5;
-        s[warpIdx] = val;
+        smem[warpIdx] = val;
         i += gridDim.x * blockDim.x;
     }
     

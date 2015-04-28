@@ -254,7 +254,7 @@ int large_gauss_test(int argc, char **argv){
 
     // Allocate dev_impulse_v
     gpuErrchk(cudaMalloc((void**) &dev_impulse_v,
-                         sizeof(cufftComplex) * impulse_length));
+                         sizeof(cufftComplex) * padded_length));
 
     // Allocate dev_out_data
     gpuErrchk(cudaMalloc((void**) &dev_out_data, 
@@ -401,7 +401,7 @@ int large_gauss_test(int argc, char **argv){
         so be careful with the size of your memory copy. */
         gpuErrchk(cudaMemcpy(dev_input_data,
                              input_data,
-                             sizeof(cufftComplex) * N,
+                             sizeof(cufftComplex) * padded_length,
                              cudaMemcpyHostToDevice));
 
 
@@ -416,7 +416,7 @@ int large_gauss_test(int argc, char **argv){
         */
         gpuErrchk(cudaMemcpy(dev_impulse_v,
                              impulse_data,
-                             sizeof(cufftComplex) * impulse_length,
+                             sizeof(cufftComplex) * padded_length,
                              cudaMemcpyHostToDevice));
 
 
@@ -425,6 +425,14 @@ int large_gauss_test(int argc, char **argv){
         (See Lecture 9 for details on padding.)
         Set the rest of the memory regions to 0 (recommend using cudaMemset).
         */
+        gpuErrchk(cudaMemset(dev_impulse_v + impulse_length,
+                             0,
+                             sizeof(cufftComplex) * (padded_length - impulse_length)));
+
+        gpuErrchk(cudaMemset(dev_input_data + N,
+                             0,
+                             sizeof(cufftComplex) * (padded_length - N)));
+
         gpuErrchk(cudaMemset(dev_out_data, 
                              0, 
                              sizeof(cufftComplex) * padded_length));
@@ -432,15 +440,13 @@ int large_gauss_test(int argc, char **argv){
         /* TODO: Create a cuFFT plan for the forward and inverse transforms. 
         (You can use the same plan for both, as is done in the lecture examples.)
         */
-        cufftHandle plan_input;
-        cufftHandle plan_impulse;
-        cufftPlan1d(&plan_input, N, 1);
-        cufftPlan1d(&plan_impulse, impulse_length, 1);
+        cufftHandle plan;
+        cufftPlan1d(&plan, padded_length, 1);
 
         /* TODO: Run the forward DFT on the input signal and the impulse response. 
         (Do these in-place.) */
-        cufftExecC2C(plan_input, dev_input_data, dev_input_data, CUFFT_FORWARD);
-        cufftExecC2C(plan_impulse, dev_impulse_v, dev_impulse_v, CUFFT_FORWARD);
+        cufftExecC2C(plan, dev_input_data, dev_input_data, CUFFT_FORWARD);
+        cufftExecC2C(plan, dev_impulse_v, dev_impulse_v, CUFFT_FORWARD);
 
 
         /* NOTE: This is a function in the fft_convolve_cuda.cu file,
@@ -466,12 +472,11 @@ int large_gauss_test(int argc, char **argv){
 
         /* TODO: Run the inverse DFT on the output signal. 
         (Do this in-place.) */
-        cufftExecC2C(plan_input, dev_out_data, dev_out_data, CUFFT_INVERSE);
+        cufftExecC2C(plan, dev_out_data, dev_out_data, CUFFT_INVERSE);
 
 
         /* TODO: Destroy the cuFFT plan. */
-        cufftDestroy(plan_input);
-        cufftDestroy(plan_impulse);
+        cufftDestroy(plan);
 
         // For testing and timing-control purposes only
         gpuErrchk( cudaMemcpy( output_data_testarr, dev_out_data, padded_length * sizeof(cufftComplex), cudaMemcpyDeviceToHost));
