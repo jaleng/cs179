@@ -112,7 +112,7 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
 
         // Fold max of block values into max_abs_val atomically
         if (tid == 0)
-            atomicMax(max_abs_val, 5 /* DEBUG smem[0]*/);
+            atomicMax(max_abs_val, smem[0]);
         // Move to next set of blocks to be processed
         i += gridDim.x * blockDim.x;
    } 
@@ -165,7 +165,7 @@ void cudaCallMaximumKernel(const unsigned int blocks,
         const unsigned int padded_length) {
         
     cudaMaximumKernel<<<blocks, threadsPerBlock, 
-                        (padded_length * sizeof(float)) / 32>>> (
+                        (threadsPerBlock * sizeof(float)) / 32>>> (
         out_data, max_abs_val, padded_length);
 }
 
