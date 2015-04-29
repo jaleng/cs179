@@ -109,24 +109,30 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
             val = (val > otherval) ? val : otherval;
         }
 
-        int warpIdx = i >> 5;
+        int warpIdx = threadIdx.x >> 5;
         smem[warpIdx] = val;
-        __syncthreads();
 
-        for (unsigned int s_idx = blockDim.x/2; s_idx > 0; s_idx >>= 1) {
-            if (i < s_idx) {
-                float v1 = smem[i];
-                float v2 = smem[i + s_idx];
-                smem[i] = (v1 > v2) ? v1 : v2;
+	i += gridDim.x * blockDim.x;
+
+	
+	// DEBUG
+	//atomicMax(max_abs_val, smem[warpIdx]);
+   } 
+        __syncthreads();
+	
+	int tid = threadIdx.x;
+        for (unsigned int s_idx = blockDim.x/64; s_idx > 0; s_idx >>= 1) {
+            if (tid < s_idx) {
+                float v1 = smem[tid];
+                float v2 = smem[tid + s_idx];
+                smem[tid] = (v1 > v2) ? v1 : v2;
             }
             __syncthreads();
         }
 
-        if (i == 0)
+        if (tid == 0)
             atomicMax(max_abs_val, smem[0]);
-        
-        i += gridDim.x * blockDim.x;
-    }
+
 }
 
 __global__
