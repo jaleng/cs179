@@ -177,7 +177,7 @@ int large_gauss_test(int argc, char **argv){
     parameter to control how many trials we run. */
 
     int nChannels = 2;       // Can set as the number of trials
-    int N = 1048576; // 2^20 // Can set how many data points
+    int N = 1048576;// - GAUSSIAN_SIZE + 1;//32768;//1048576; // 2^20 // Can set how many data points
                              // restricted to powers of 2
     int impulse_length = GAUSSIAN_SIZE;
 

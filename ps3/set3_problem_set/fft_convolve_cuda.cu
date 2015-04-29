@@ -64,8 +64,9 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
 
     extern __shared__ float smem[]; // Store warp maxes here.
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int warpIdx = threadIdx.x >> 5;
     int tid = threadIdx.x;
+    //smem[0] = 5;
+    //atomicMax(max_abs_val, smem[0]);
 
     while (i < padded_length) {
         /* 
@@ -86,6 +87,7 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
          */
 
         float val = out_data[i].x;
+        int warpIdx = threadIdx.x >> 5;
 
         // Butterfly warp shuffle pattern to get max of warp items
         for (int j = 16; j >= 1; j /= 2) {
@@ -110,11 +112,11 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
 
         // Fold max of block values into max_abs_val atomically
         if (tid == 0)
-            atomicMax(max_abs_val, smem[0]);
-
+            atomicMax(max_abs_val, 5 /* DEBUG smem[0]*/);
         // Move to next set of blocks to be processed
         i += gridDim.x * blockDim.x;
    } 
+
 }
 
 __global__
