@@ -102,9 +102,7 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
         // to avoid bank conflicts
         for (unsigned int s = blockDim.x/64; s > 0; s >>= 1) {
             if (tid < s) {
-                float v1 = smem[tid];
-                float v2 = smem[tid + s];
-                smem[tid] = (v1 > v2) ? v1 : v2;
+                smem[tid] = fmaxf(smem[tid], smem[tid + s]);
             }
             __syncthreads();
         }
