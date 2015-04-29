@@ -551,9 +551,6 @@ int large_gauss_test(int argc, char **argv){
         // Set it to 0 in preparation for running. 
         gpuErrchk(cudaMemset(dev_max_abs_val, 0, sizeof(float)));
 
-        /* NOTE: This is a function in the fft_convolve_cuda.cu file,
-        where you'll fill in the kernel call for finding the maximum
-        of the output signal. */
         cudaCallMaximumKernel(blocks, local_size, dev_out_data,
             dev_max_abs_val, padded_length);
 
@@ -565,10 +562,6 @@ int large_gauss_test(int argc, char **argv){
                 cerr << "No kernel error detected" << endl;
         }
 
-
-        /* NOTE: This is a function in the fft_convolve_cuda.cu file,
-        where you'll fill in the kernel call for dividing the output
-        signal by the previously-calculated maximum. */
         cudaCallDivideKernel(blocks, local_size, dev_out_data,
             dev_max_abs_val, padded_length);
 
