@@ -240,14 +240,6 @@ int large_gauss_test(int argc, char **argv){
     cufftComplex *dev_impulse_v;
     cufftComplex *dev_out_data;
 
-    /* TODO: Allocate memory for these three arrays on the GPU. 
-
-    Note that we need to allocate more memory than on Homework 1,
-    due to the padding necessary for the FFT convolution. 
-
-    Also, unlike in Homework 1, we don't copy our impulse response
-    yet, because this is now given to us per-channel. */
-
     // Allocate dev_input_data
     gpuErrchk(cudaMalloc((void**) &dev_input_data,
                          sizeof(cufftComplex) * padded_length));
@@ -393,38 +385,20 @@ int large_gauss_test(int argc, char **argv){
 
 
 
-        /* TODO: Copy this channel's input data (stored in input_data)
-        from host memory to the GPU. 
-
-        Note that input_data only stores
-        x[n] as read from the input audio file, and not the padding, 
-        so be careful with the size of your memory copy. */
+        // Copy this channel's input data from host to device.
         gpuErrchk(cudaMemcpy(dev_input_data,
                              input_data,
                              sizeof(cufftComplex) * N,
                              cudaMemcpyHostToDevice));
 
 
-
-        /* TODO: Copy this channel's impulse response data (stored in impulse_data)
-        from host memory to the GPU. 
-
-        Like input_data, impulse_data
-        only stores h[n] as read from the impulse response file, 
-        and not the padding, so again, be careful with the size
-        of your memory copy. (It's not the same size as the input_data copy.)
-        */
+        // Copy this channel's impulse response data from host to device
         gpuErrchk(cudaMemcpy(dev_impulse_v,
                              impulse_data,
                              sizeof(cufftComplex) * impulse_length,
                              cudaMemcpyHostToDevice));
 
-
-        /* TODO: We're only copying to part of the allocated
-        memory regions on the GPU above, and we still need to zero-pad.
-        (See Lecture 9 for details on padding.)
-        Set the rest of the memory regions to 0 (recommend using cudaMemset).
-        */
+        // Zero-pad allocated data
         gpuErrchk(cudaMemset(dev_impulse_v + impulse_length,
                              0,
                              sizeof(cufftComplex) * (padded_length - impulse_length)));
@@ -437,14 +411,11 @@ int large_gauss_test(int argc, char **argv){
                              0, 
                              sizeof(cufftComplex) * padded_length));
 
-        /* TODO: Create a cuFFT plan for the forward and inverse transforms. 
-        (You can use the same plan for both, as is done in the lecture examples.)
-        */
+        // Create a cuFFT plan for the forward and inverse transforms. 
         cufftHandle plan;
         cufftPlan1d(&plan, padded_length, CUFFT_C2C, 1);
 
-        /* TODO: Run the forward DFT on the input signal and the impulse response. 
-        (Do these in-place.) */
+        // Run the forward DFT on the input signal and the impulse response. 
         cufftExecC2C(plan, dev_input_data, dev_input_data, CUFFT_FORWARD);
         cufftExecC2C(plan, dev_impulse_v, dev_impulse_v, CUFFT_FORWARD);
 
@@ -470,12 +441,11 @@ int large_gauss_test(int argc, char **argv){
 
 
 
-        /* TODO: Run the inverse DFT on the output signal. 
-        (Do this in-place.) */
+        // Run the inverse DFT on the output signal. 
         cufftExecC2C(plan, dev_out_data, dev_out_data, CUFFT_INVERSE);
 
 
-        /* TODO: Destroy the cuFFT plan. */
+        // Destroy the cuFFT plan.
         cufftDestroy(plan);
 
         // For testing and timing-control purposes only
@@ -574,12 +544,10 @@ int large_gauss_test(int argc, char **argv){
         // NVM they need this for global ops
         // Also need to memset to 0 for baseline value
 
-        /* TODO 2: Allocate memory to store the maximum magnitude found. 
-        (You only need enough space for one floating-point number.) */
+        // Allocate memory to store the maximum magnitude found. 
         gpuErrchk(cudaMalloc((void**) &dev_max_abs_val, sizeof(float)));
 
-        /* TODO 2: Set it to 0 in preparation for running. 
-        (Recommend using cudaMemset) */
+        // Set it to 0 in preparation for running. 
         gpuErrchk(cudaMemset(dev_max_abs_val, 0, sizeof(float)));
 
         /* NOTE: This is a function in the fft_convolve_cuda.cu file,
@@ -620,13 +588,7 @@ int large_gauss_test(int argc, char **argv){
             dev_max_abs_val, 1 * sizeof(float), cudaMemcpyDeviceToHost) );
 
 
-
-        /* TODO: Now that kernel calls have finished, copy the output
-        signal back from the GPU to host memory. (We store this channel's
-        result in output_data on the host.)
-
-        Note that we have a padded-length signal, so be careful of the
-        size of the memory copy. */
+        // Copy the output signal back from device to host
         gpuErrchk(cudaMemcpy(output_data,
                              dev_out_data,
                              sizeof(cufftComplex) * padded_length,
