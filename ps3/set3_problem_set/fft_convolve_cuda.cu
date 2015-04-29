@@ -91,7 +91,7 @@ cudaMaximumKernel(cufftComplex *out_data, float *max_abs_val,
         // Butterfly warp shuffle pattern to get max of warp items
         for (int j = 16; j >= 1; j /= 2) {
             float otherval = __shfl_xor(val, j, 32);
-            val = (val > otherval) ? val : otherval;
+            val = fmaxf(val, otherval);
         }
 
         smem[warpIdx] = val;
