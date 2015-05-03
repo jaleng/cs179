@@ -50,6 +50,9 @@ void checkCUDAKernelError()
 
 }
 
+// Texture
+texture<float, 2, cudaReadModeElementType> texreference;
+
 // TODO(jg) comment
 __global__
 void cudaRampFilterKernel(cufftComplex *input, int width, int n) {
@@ -61,7 +64,7 @@ void cudaRampFilterKernel(cufftComplex *input, int width, int n) {
         cufftComplex val = input[i];
         val.x *= scale;
         val.y *= scale;
-        input[i] = scale;
+        input[i] = val;
 
         // Move to next set of blocks to be processed
         i += gridDim.x * blockDim.x;
@@ -84,9 +87,8 @@ void cudaExtractRealKernel(cufftComplex *input, float *output, int size) {
 // TODO(jg) comment
 __global__
 void cudaCTBackProjection(
-    texture<float, 2, cudaReadModeElementType> texreference,
-    float *sinogram;
-    int sinogram_width;
+    float *sinogram,
+    int sinogram_width,
     float *output,
     int height,
     int width,
@@ -120,7 +122,7 @@ void cudaCTBackProjection(
             }
         }
 
-        d_idx = sinogram_width / 2 + d;
+        int d_idx = sinogram_width / 2 + d;
         output[y * width + x] += tex2D(texreference, theta_idx, d_idx);
         // Calculate x_i, y_i from m, -1/m
         // Calculate d from x_i, y_i
@@ -249,10 +251,10 @@ int main(int argc, char** argv){
                            dev_sinogram_cmplx, CUFFT_FORWARD));
 
     // TODO(jg): frequency scaling
-    checkCUDAKernelError(
-        cudaRampFilterKernel<<<512, 200>>>( dev_sinogram_cmplx,
+    cudaRampFilterKernel<<<512, 200>>>( dev_sinogram_cmplx,
                                             sinogram_width,
-                                            nAngles ));
+                                            nAngles );   
+    checkCUDAKernelError();
     // TODO(jg): inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
@@ -273,7 +275,6 @@ int main(int argc, char** argv){
     */
     
     // Set up 2D texture cache on sinogram
-    texture<float, 2, cudaReadModeElementType> texreference;
     cudaArray *cSinogram;
     cudaChannelFormatDesc channel = cudaCreateChannelDesc<float>();
 
