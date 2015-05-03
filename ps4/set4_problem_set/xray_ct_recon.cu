@@ -251,18 +251,18 @@ int main(int argc, char** argv){
                            dev_sinogram_cmplx, CUFFT_FORWARD));
 
     // TODO(jg): frequency scaling
-    cudaRampFilterKernel<<<512, 200>>>( dev_sinogram_cmplx,
-                                            sinogram_width,
-                                            nAngles );   
+    cudaRampFilterKernel<<<512, 200>>>(dev_sinogram_cmplx,
+                                       sinogram_width,
+                                       nAngles);   
     checkCUDAKernelError();
     // TODO(jg): inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
 
     // TODO(jg): Extract reals
-    checkCUDAKernelError(
-        cudaExtractRealKernel<<<512, 200>>>(
-            dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles) );
+    cudaExtractRealKernel<<<512, 200>>>(
+            dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles);
+    checkCUDAKernelError();
 
     // TODO(jg): Free the original sinogram
     free(dev_sinogram_cmplx);
@@ -293,15 +293,14 @@ int main(int argc, char** argv){
     cudaBindTextureToArray(texreference, cSinogram);
 
     // TODO(jg): Call backproject kernel
-    checkCUDAKernelError(
-        cudaCTBackProjection<<<512, 200>>>(
-            texreference,
-            dev_sinogram_float,
-            sinogram_width,
-            output_dev,
-            height,
-            width,
-            nAngles) );
+    cudaCTBackProjection<<<512, 200>>>(
+        dev_sinogram_float,
+        sinogram_width,
+        output_dev,
+        height,
+        width,
+        nAngles); 
+    checkCUDAKernelError();
 
     //
     cudaUnbindTexture(texreference);
