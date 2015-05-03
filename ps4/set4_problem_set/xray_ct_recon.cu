@@ -251,21 +251,29 @@ int main(int argc, char** argv){
                            dev_sinogram_cmplx, CUFFT_FORWARD));
 
     // TODO(jg): frequency scaling
+    printf("Calling cudaRampFilterKernel\n");
     cudaRampFilterKernel<<<512, 200>>>(dev_sinogram_cmplx,
                                        sinogram_width,
-                                       nAngles);   
+                                       nAngles);
+    printf("Called cudaRampFilterKernel\n");
+   
     checkCUDAKernelError();
     // TODO(jg): inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
 
     // TODO(jg): Extract reals
+    printf("Calling cudaExtractRealKernel\n");
     cudaExtractRealKernel<<<512, 200>>>(
             dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles);
+    printf("Called cudaExtractRealKernel\n");
     checkCUDAKernelError();
 
     // TODO(jg): Free the original sinogram
-    free(dev_sinogram_cmplx);
+    printf("Freeing dev_sinogram_cmplx");
+    cudaFree(dev_sinogram_cmplx);
+    printf("Freed dev_sinogram_cmplx");
+
 
     /* TODO 2: Implement backprojection.
         - Allocate memory for the output image.
