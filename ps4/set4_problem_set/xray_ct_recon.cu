@@ -128,8 +128,7 @@ void cudaCTBackProjection(
             float d_idx = float(sinogram_width) / float(2) + d;
             out_sum += tex2D(texreference, d_idx, theta_idx);
         }
-        //output[y * width + x] += out_sum;
-	output[y * width +x] = 0.5;
+        output[y * width + x] += out_sum;
         // Calculate x_i, y_i from m, -1/m
         // Calculate d from x_i, y_i
         // image[x,y] += sinogram[theta, "distance"]
@@ -257,8 +256,6 @@ int main(int argc, char** argv){
                            dev_sinogram_cmplx, CUFFT_FORWARD));
 
     // TODO(jg): frequency scaling
-    // DEBUG: Not doing filter for now
-    /*
     printf("Calling cudaRampFilterKernel\n");
     cudaRampFilterKernel<<<512, 200>>>(dev_sinogram_cmplx,
                                        sinogram_width,
@@ -266,23 +263,19 @@ int main(int argc, char** argv){
     printf("Called cudaRampFilterKernel\n");
     
     checkCUDAKernelError();
-    */
+    
 
     // TODO(jg): inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
 
     // TODO(jg): Extract reals
-    printf("Calling cudaExtractRealKernel\n");
     cudaExtractRealKernel<<<512, 200>>>(
             dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles);
-    printf("Called cudaExtractRealKernel\n");
     checkCUDAKernelError();
 
     // TODO(jg): Free the original sinogram
-    printf("Freeing dev_sinogram_cmplx");
     cudaFree(dev_sinogram_cmplx);
-    printf("Freed dev_sinogram_cmplx");
 
 
     /* TODO 2: Implement backprojection.
@@ -326,7 +319,7 @@ int main(int argc, char** argv){
     // Copy result from device to host
     gpuErrchk(cudaMemcpy(output_host,
                          output_dev,
-                         sinogram_width*nAngles*sizeof(float), 
+                         size_result, 
                          cudaMemcpyDeviceToHost));
 
     cudaFreeArray(cSinogram);
