@@ -50,10 +50,10 @@ void checkCUDAKernelError()
 
 }
 
-// Texture
+/* Texture declaration, will hold the sinogram in texture cache */
 texture<float, 2, cudaReadModeElementType> texreference;
 
-// TODO(jg) comment
+/* Scale amplitudes linearly with their frequencies */
 __global__
 void cudaRampFilterKernel(cufftComplex *input, int width, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -72,19 +72,21 @@ void cudaRampFilterKernel(cufftComplex *input, int width, int n) {
 }
 
 
-// TODO(jg) comment
+/* Extract the real components of a complex array, scale, and place into a 
+   float array */
 __global__
-void cudaExtractRealKernel(cufftComplex *input, float *output, int size) {
+void cudaExtractRealKernel(cufftComplex *input, float *output, int size, 
+                           float scale) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     while (i < size) {
-        output[i] = input[i].x;
+        output[i] = input[i].x * scale;
 
         // Move to next set of blocks to be processed
         i += gridDim.x * blockDim.x;
     }
 }
 
-// TODO(jg) comment
+/* Use back projection to construct an image given a sinogram */
 __global__
 void cudaCTBackProjection(
     float *sinogram,
@@ -107,17 +109,18 @@ void cudaCTBackProjection(
         // each line passing through at that angle to the value of the pixel
         for (int theta_idx = 0; theta_idx < nAngles; theta_idx++) {
             float theta = (PI / nAngles) * theta_idx;
-            float d;
+            float d; // distance from sinogram centerline
 
             if (theta_idx == 0) {
                 d = x_0;
             } else if (theta_idx == (nAngles / 2) && (nAngles % 2 == 1)) {
                 d = y_0;
             } else {
-                // Calculate m from theta
-                float m = -cos(theta) / sin(theta); // slope
+                float m = -cos(theta) / sin(theta); // radiation slope
                 float q = -1/m;                     // perpendicular slope
                 
+                // Coordinates for x_0, y_0 projected onto the 
+                // line parallel to the detector and through the center
                 float x_i = (y_0 - m * x_0) / (q - m);
                 float y_i = q * x_i;
 
@@ -211,16 +214,14 @@ int main(int argc, char** argv){
     fclose(dataFile);
 
 
-    /*********** Assignment starts here *********/
+    /*********** Begin GPU processing *********/
 
-    /* TODO: Allocate memory for all GPU storage above, copy input sinogram
-    over to dev_sinogram_cmplx. */
+    /* Allocate memory for all GPU storage above */
 
     // Allocate device memory for the sinogram complex values
     gpuErrchk(cudaMalloc( (void**) &dev_sinogram_cmplx,
                           sinogram_width*nAngles*sizeof(cufftComplex) ));
 
-    // TODO(jg): is this size right?
     // Allocate device memory for the sinogram real values
     gpuErrchk(cudaMalloc( (void**) &dev_sinogram_float,
                           sinogram_width*nAngles*sizeof(float) ));
@@ -230,24 +231,16 @@ int main(int argc, char** argv){
                           size_result ));
     gpuErrchk(cudaMemset(output_dev, 0, size_result));
 
-    // Copy the sinogram from host to device
+
+    /* Copy the sinogram from host to device */
+
     gpuErrchk(cudaMemcpy( dev_sinogram_cmplx,
                           sinogram_host,
                           sinogram_width*nAngles*sizeof(cufftComplex),
                           cudaMemcpyHostToDevice ));
 
 
-
-    /* TODO 1: Implement the high-pass filter:
-        - Use cuFFT for the forward FFT
-        - Create your own kernel for the frequency scaling.
-        - Use cuFFT for the inverse FFT
-        - extract real components to floats
-        - Free the original sinogram (dev_sinogram_cmplx)
-
-        Note: If you want to deal with real-to-complex and complex-to-real
-        transforms in cuFFT, you'll have to slightly change our code above.
-    */
+    /* Apply a high-pass filter to the sinogram data */
 
     // Create a cuFFT plan to FFT the sinogram
     cufftHandle plan;
@@ -257,38 +250,30 @@ int main(int argc, char** argv){
     gpuFFTchk(cufftExecC2C(plan, dev_sinogram_cmplx, 
                            dev_sinogram_cmplx, CUFFT_FORWARD));
 
-    // TODO(jg): frequency scaling
-    printf("Calling cudaRampFilterKernel\n");
+    // Frequency scaling
     cudaRampFilterKernel<<<threadsPerBlock, nBlocks>>>(
         dev_sinogram_cmplx,
         sinogram_width,
         nAngles);
-    printf("Called cudaRampFilterKernel\n");
     
     checkCUDAKernelError();
-    
 
-    // TODO(jg): inverse fft on sinogram
+    // Run inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
 
-    // TODO(jg): Extract reals
+    // Extract reals and scale
+    float scale = float(1) / float(sinogram_width);
     cudaExtractRealKernel<<<threadsPerBlock, nBlocks>>>(
-            dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles);
+            dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles,
+            scale);
     checkCUDAKernelError();
 
-    // TODO(jg): Free the original sinogram
+    // Free the original sinogram
     cudaFree(dev_sinogram_cmplx);
 
 
-    /* TODO 2: Implement backprojection.
-        - Allocate memory for the output image.
-        - Create your own kernel to accelerate backprojection.
-        - Copy the reconstructed image back to output_host.
-        - Free all remaining memory on the GPU.
-    */
-    
-    // Set up 2D texture cache on sinogram
+    /* Set up 2D texture cache on sinogram */
     cudaArray *cSinogram;
     cudaChannelFormatDesc channel = cudaCreateChannelDesc<float>();
 
@@ -306,7 +291,8 @@ int main(int argc, char** argv){
 
     cudaBindTextureToArray(texreference, cSinogram);
 
-    // TODO(jg): Call backproject kernel
+    /* Call the Back Projection kernel */
+
     cudaCTBackProjection<<<threadsPerBlock, nBlocks>>>(
         dev_sinogram_float,
         sinogram_width,
@@ -314,10 +300,8 @@ int main(int argc, char** argv){
         height,
         width,
         nAngles); 
-    checkCUDAKernelError();
 
-    //
-    cudaUnbindTexture(texreference);
+    checkCUDAKernelError();
 
     // Copy result from device to host
     gpuErrchk(cudaMemcpy(output_host,
@@ -325,7 +309,6 @@ int main(int argc, char** argv){
                          size_result, 
                          cudaMemcpyDeviceToHost));
 
-    cudaFreeArray(cSinogram);
     
     /* Export image data. */
 
@@ -336,6 +319,12 @@ int main(int argc, char** argv){
         fprintf(outputFile, "\n");
     }
 
+    /* Cleanup for device */
+
+    cudaUnbindTexture(texreference);
+    cudaFreeArray(cSinogram);
+    cudaFree(dev_sinogram_float);
+    cudaFree(output_dev);
 
     /* Cleanup: Free host memory, close files. */
 
