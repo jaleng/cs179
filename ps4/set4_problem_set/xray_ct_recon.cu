@@ -128,7 +128,8 @@ void cudaCTBackProjection(
             float d_idx = float(sinogram_width) / float(2) + d;
             out_sum += tex2D(texreference, d_idx, theta_idx);
         }
-        output[y * width + x] += out_sum;
+        //output[y * width + x] += out_sum;
+	output[y * width +x] = 0.5;
         // Calculate x_i, y_i from m, -1/m
         // Calculate d from x_i, y_i
         // image[x,y] += sinogram[theta, "distance"]
