@@ -103,7 +103,7 @@ void cudaCTBackProjection(
 
         float out_sum = 0;
 
-        for (theta_idx = 0; theta_idx < nAngles; theta_idx++) {
+        for (int theta_idx = 0; theta_idx < nAngles; theta_idx++) {
 
             float theta = (PI / nAngles) * theta_idx;
             float d;
