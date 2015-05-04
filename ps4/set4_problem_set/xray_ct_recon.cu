@@ -99,7 +99,7 @@ void cudaCTBackProjection(
         int y = i / (width * nAngles);
         int x = (i % (width * nAngles)) / nAngles;
         int theta_idx = i % nAngles;
-        float theta = (PI / nAngles) * theta_idx;
+        float theta = (float(PI) / float(nAngles)) * theta_idx;
 
         float x_0 = x - width / 2;
         float y_0 = height / 2 - y;
@@ -251,13 +251,17 @@ int main(int argc, char** argv){
                            dev_sinogram_cmplx, CUFFT_FORWARD));
 
     // TODO(jg): frequency scaling
+    // DEBUG: Not doing filter for now
+    /*
     printf("Calling cudaRampFilterKernel\n");
     cudaRampFilterKernel<<<512, 200>>>(dev_sinogram_cmplx,
                                        sinogram_width,
                                        nAngles);
     printf("Called cudaRampFilterKernel\n");
-   
+    
     checkCUDAKernelError();
+    */
+    
     // TODO(jg): inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
