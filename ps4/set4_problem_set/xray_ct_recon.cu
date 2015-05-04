@@ -103,8 +103,9 @@ void cudaCTBackProjection(
 
         float out_sum = 0;
 
+        // Iterate over all of the angles, accumulate the contribution of
+        // each line passing through at that angle to the value of the pixel
         for (int theta_idx = 0; theta_idx < nAngles; theta_idx++) {
-
             float theta = (PI / nAngles) * theta_idx;
             float d;
 
@@ -114,11 +115,12 @@ void cudaCTBackProjection(
                 d = y_0;
             } else {
                 // Calculate m from theta
-                float m = -cos(theta) / sin(theta);
-                float q = -1/m;
+                float m = -cos(theta) / sin(theta); // slope
+                float q = -1/m;                     // perpendicular slope
                 
                 float x_i = (y_0 - m * x_0) / (q - m);
                 float y_i = q * x_i;
+
                 d = sqrt(x_i * x_i + y_i * y_i);
                 if ( (q > 0 && x_i < 0) || (q < 0 && x_i > 0)) {
                     d = -d;
@@ -128,10 +130,10 @@ void cudaCTBackProjection(
             float d_idx = float(sinogram_width) / float(2) + d;
             out_sum += tex2D(texreference, d_idx, theta_idx);
         }
+
+        // Write to the image
         output[y * width + x] += out_sum;
-        // Calculate x_i, y_i from m, -1/m
-        // Calculate d from x_i, y_i
-        // image[x,y] += sinogram[theta, "distance"]
+
         // Move to next set of blocks to be processed
         i += gridDim.x * blockDim.x;
     }    
@@ -257,9 +259,10 @@ int main(int argc, char** argv){
 
     // TODO(jg): frequency scaling
     printf("Calling cudaRampFilterKernel\n");
-    cudaRampFilterKernel<<<512, 200>>>(dev_sinogram_cmplx,
-                                       sinogram_width,
-                                       nAngles);
+    cudaRampFilterKernel<<<threadsPerBlock, nBlocks>>>(
+        dev_sinogram_cmplx,
+        sinogram_width,
+        nAngles);
     printf("Called cudaRampFilterKernel\n");
     
     checkCUDAKernelError();
@@ -270,7 +273,7 @@ int main(int argc, char** argv){
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
 
     // TODO(jg): Extract reals
-    cudaExtractRealKernel<<<512, 200>>>(
+    cudaExtractRealKernel<<<threadsPerBlock, nBlocks>>>(
             dev_sinogram_cmplx, dev_sinogram_float, sinogram_width*nAngles);
     checkCUDAKernelError();
 
@@ -304,7 +307,7 @@ int main(int argc, char** argv){
     cudaBindTextureToArray(texreference, cSinogram);
 
     // TODO(jg): Call backproject kernel
-    cudaCTBackProjection<<<512, 200>>>(
+    cudaCTBackProjection<<<threadsPerBlock, nBlocks>>>(
         dev_sinogram_float,
         sinogram_width,
         output_dev,
