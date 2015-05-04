@@ -95,35 +95,40 @@ void cudaCTBackProjection(
     int nAngles) {
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    while (i < height * width * nAngles) {
-        int y = i / (width * nAngles);
-        int x = (i % (width * nAngles)) / nAngles;
-        int theta_idx = i % nAngles;
-        float theta = (float(PI) / float(nAngles)) * theta_idx;
-
+    while (i < height * width) {
+        int y = i / width;
+        int x = i % width;
         float x_0 = x - width / 2;
         float y_0 = height / 2 - y;
-        float d;
 
-        if (theta_idx == 0) {
-            d = x_0;
-        } else if (theta_idx == (nAngles / 2) && (nAngles % 2 == 1)) {
-            d = y_0;
-        } else {
-            // Calculate m from theta
-            float m = -cos(theta) / sin(theta);
-            float q = -1/m;
-            
-            float x_i = (y_0 - m * x_0) / (q - m);
-            float y_i = q * x_i;
-            d = sqrt(x_i * x_i + y_i * y_i);
-            if (x_i < 0 || (q < 0 && x_i > 0)) {
-                d = -d;
+        float out_sum = 0;
+
+        for (theta_idx = 0; theta_idx < nAngles; theta_idx++) {
+
+            float theta = (PI / nAngles) * theta_idx;
+            float d;
+
+            if (theta_idx == 0) {
+                d = x_0;
+            } else if (theta_idx == (nAngles / 2) && (nAngles % 2 == 1)) {
+                d = y_0;
+            } else {
+                // Calculate m from theta
+                float m = -cos(theta) / sin(theta);
+                float q = -1/m;
+                
+                float x_i = (y_0 - m * x_0) / (q - m);
+                float y_i = q * x_i;
+                d = sqrt(x_i * x_i + y_i * y_i);
+                if ( (q > 0 && x_i < 0) || (q < 0 && x_i > 0)) {
+                    d = -d;
+                }
             }
-        }
 
-        float d_idx = float(sinogram_width) / float(2) + d;
-        output[y * width + x] += tex2D(texreference, d_idx, theta_idx);
+            float d_idx = float(sinogram_width) / float(2) + d;
+            out_sum += tex2D(texreference, d_idx, theta_idx);
+        }
+        output[y * width + x] += out_sum;
         // Calculate x_i, y_i from m, -1/m
         // Calculate d from x_i, y_i
         // image[x,y] += sinogram[theta, "distance"]
