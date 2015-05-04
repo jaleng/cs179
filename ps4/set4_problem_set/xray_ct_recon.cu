@@ -122,8 +122,8 @@ void cudaCTBackProjection(
             }
         }
 
-        int d_idx = sinogram_width / 2 + d;
-        output[y * width + x] += tex2D(texreference, theta_idx, d_idx);
+        float d_idx = float(sinogram_width) / float(2) + d;
+        output[y * width + x] += tex2D(texreference, d_idx, theta_idx);
         // Calculate x_i, y_i from m, -1/m
         // Calculate d from x_i, y_i
         // image[x,y] += sinogram[theta, "distance"]
@@ -261,7 +261,7 @@ int main(int argc, char** argv){
     
     checkCUDAKernelError();
     */
-    
+
     // TODO(jg): inverse fft on sinogram
     gpuFFTchk(cufftExecC2C( plan, dev_sinogram_cmplx,
                             dev_sinogram_cmplx, CUFFT_INVERSE ));
