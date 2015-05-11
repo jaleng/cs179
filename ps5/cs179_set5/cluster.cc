@@ -97,6 +97,9 @@ void printerCallback(cudaStream_t stream, cudaError_t status, void *userData) {
 }
 
 void cluster(istream& in_stream, int k, int batch_size) {
+  // TODO(jg) remove
+  printf("In cluster()\n");
+
   // cluster centers
   float *d_clusters;
 
@@ -118,27 +121,53 @@ void cluster(istream& in_stream, int k, int batch_size) {
   
   // TODO: allocate copy buffers and streams
   // TODO(jg): create 2 streams
+  // TODO(jg) remove
+  printf("Creating streams\n");
+
   cudaStream_t streams[2];
   cudaStreamCreate(&streams[0]);
   cudaStreamCreate(&streams[1]);
 
   // TODO(jg): create 2 pinned host buffers using cudaMallocHost
+  // TODO(jg) remove
+  printf("Creating hostBuffers\n");
+
   float* hostBuffers[2];
-  cudaMallocHost(&hostBuffers[0], sizeof(float) * REVIEW_DIM * batch_size);
-  cudaMallocHost(&hostBuffers[1], sizeof(float) * REVIEW_DIM * batch_size);
+  gpuErrChk(
+    cudaMallocHost(&hostBuffers[0], sizeof(float) * REVIEW_DIM * batch_size) );
+  gpuErrChk(
+    cudaMallocHost(&hostBuffers[1], sizeof(float) * REVIEW_DIM * batch_size) );
+
+  // TODO(jg) remove
+  printf("Creating hostOut\n");
 
   int* hostOut[2];
-  cudaMallocHost(&hostOut[0], sizeof(int) *  batch_size);
-  cudaMallocHost(&hostOut[1], sizeof(int) *  batch_size);
+  gpuErrChk(
+    cudaMallocHost(&hostOut[0], sizeof(int) *  batch_size) );
+  gpuErrChk(
+    cudaMallocHost(&hostOut[1], sizeof(int) *  batch_size) );
 
   // TODO(jg): create 2 buffers on GPU
+  // TODO(jg) remove
+  printf("Creating devBuffers\n");
+
   float* devBuffers[2];
-  cudaMalloc(&devBuffers[0], sizeof(float) * REVIEW_DIM * batch_size);
-  cudaMalloc(&devBuffers[1], sizeof(float) * REVIEW_DIM * batch_size);
+  gpuErrChk(
+    cudaMalloc(&devBuffers[0], sizeof(float) * REVIEW_DIM * batch_size) );
+  gpuErrChk(
+    cudaMalloc(&devBuffers[1], sizeof(float) * REVIEW_DIM * batch_size) );
+
+  // TODO(jg) remove
+  printf("Creating devOut\n");
 
   int* devOut[2];
-  cudaMalloc(&devOut[0], sizeof(int) *  batch_size);
-  cudaMalloc(&devOut[1], sizeof(int) *  batch_size);
+  gpuErrChk(
+    cudaMalloc(&devOut[0], sizeof(int) *  batch_size) );
+  gpuErrChk(
+    cudaMalloc(&devOut[1], sizeof(int) *  batch_size) );
+
+  // TODO(jg) remove
+  printf("Starting main loop to process input lines\n");
 
   // main loop to process input lines (each line corresponds to a review)
   int review_idx = 0;
@@ -174,6 +203,9 @@ void cluster(istream& in_stream, int k, int batch_size) {
 
   // wait for everything to end on GPU before final summary
   gpuErrChk(cudaDeviceSynchronize());
+
+  // TODO(jg) remove
+  printf("Finished device synchronize after main loop\n");
 
   // retrieve final cluster locations and counts
   int *cluster_counts = new int[k];
