@@ -76,9 +76,9 @@ void sloppyClusterKernel(float *clusters, int *cluster_counts, int k,
   float min_distance = squared_distance(smem, data, 1, REVIEW_DIM);
   int closest_cluster = 0;
 
-  data_pt_start = data + REVIEW_DIM * i;
+  float *data_pt_start = data + REVIEW_DIM * i;
 
-  for (j = 1; j < k; j++) {
+  for (int j = 1; j < k; j++) {
     // store the distance between review i and cluster j
     float d = squared_distance(smem + REVIEW_DIM * j, data_pt_start, 1, REVIEW_DIM);
     if (d < min_distance) {

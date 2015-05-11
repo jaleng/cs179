@@ -119,8 +119,8 @@ void cluster(istream& in_stream, int k, int batch_size) {
   // TODO: allocate copy buffers and streams
   // TODO(jg): create 2 streams
   cudaStream_t streams[2];
-  cudaStreamCreate(&s[0]);
-  cudaStreamCreate(&s[1]);
+  cudaStreamCreate(&streams[0]);
+  cudaStreamCreate(&streams[1]);
 
   // TODO(jg): create 2 pinned host buffers using cudaMallocHost
   float* hostBuffers[2];
@@ -143,11 +143,11 @@ void cluster(istream& in_stream, int k, int batch_size) {
   // main loop to process input lines (each line corresponds to a review)
   int review_idx = 0;
   for (string review_str; getline(in_stream, review_str); review_idx++) {
-    i = (review_idx / batch_size) % 2;
-    j = review_idx % batch_size;
+    int i = (review_idx / batch_size) % 2;
+    int j = review_idx % batch_size;
 
     // TODO: readLSAReview into appropriate storage
-    readLSAReview(review_str, devBuffer[i] + j * REVIEW_DIM);
+    readLSAReview(review_str, devBuffers[i] + j * REVIEW_DIM);
 
     // TODO: if you have filled up a batch, copy H->D, kernel, copy D->H,
     //       and set callback to printerCallback. Will need to allocate
@@ -158,8 +158,8 @@ void cluster(istream& in_stream, int k, int batch_size) {
                       cudaMemcpyHostToDevice,
                       streams[i]);
       cudaCluster(d_clusters, d_cluster_counts, k, devBuffers[i], devOut[i],
-                  batch_size);
-      cudaMemcpyAsync(hostOUt[i], devOut[i], sizeof(int) * batch_size,
+                  batch_size, streams[i]);
+      cudaMemcpyAsync(hostOut[i], devOut[i], sizeof(int) * batch_size,
                       cudaMemcpyDeviceToHost,
                       streams[i]);
       printerArg *arg = new printerArg;
