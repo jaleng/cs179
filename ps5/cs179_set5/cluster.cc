@@ -83,7 +83,6 @@ struct printerArg {
 };
 
 // Prints out which cluster each review in a batch was assigned to.
-// TODO: Call with cudaStreamAddCallback (after completing D->H memcpy)
 void printerCallback(cudaStream_t stream, cudaError_t status, void *userData) {
   printerArg *arg = static_cast<printerArg *>(userData);
 
@@ -97,9 +96,6 @@ void printerCallback(cudaStream_t stream, cudaError_t status, void *userData) {
 }
 
 void cluster(istream& in_stream, int k, int batch_size) {
-  // TODO(jg) remove
-  printf("In cluster()\n");
-
   // cluster centers
   float *d_clusters;
 
@@ -119,18 +115,13 @@ void cluster(istream& in_stream, int k, int batch_size) {
   // initialize cluster counts to 0
   gpuErrChk(cudaMemset(d_cluster_counts, 0, k * sizeof(int)));
   
-  // TODO: allocate copy buffers and streams
-  // TODO(jg): create 2 streams
-  // TODO(jg) remove
-  printf("Creating streams\n");
-
+  // allocate copy buffers and streams
+  // create 2 streams
   cudaStream_t streams[2];
   cudaStreamCreate(&streams[0]);
   cudaStreamCreate(&streams[1]);
 
-  // TODO(jg): create 2 pinned host buffers using cudaMallocHost
-  // TODO(jg) remove
-  printf("Creating hostBuffers\n");
+  // create pinned host buffers
 
   float* hostBuffers[2];
   gpuErrChk(
@@ -138,27 +129,18 @@ void cluster(istream& in_stream, int k, int batch_size) {
   gpuErrChk(
     cudaMallocHost(&hostBuffers[1], sizeof(float) * REVIEW_DIM * batch_size) );
 
-  // TODO(jg) remove
-  printf("Creating hostOut\n");
-
   int* hostOut[2];
   gpuErrChk(
     cudaMallocHost(&hostOut[0], sizeof(int) *  batch_size) );
   gpuErrChk(
     cudaMallocHost(&hostOut[1], sizeof(int) *  batch_size) );
 
-  // TODO(jg): create 2 buffers on GPU
-  // TODO(jg) remove
-  printf("Creating devBuffers\n");
-
+  // create buffers on GPU
   float* devBuffers[2];
   gpuErrChk(
     cudaMalloc(&devBuffers[0], sizeof(float) * REVIEW_DIM * batch_size) );
   gpuErrChk(
     cudaMalloc(&devBuffers[1], sizeof(float) * REVIEW_DIM * batch_size) );
-
-  // TODO(jg) remove
-  printf("Creating devOut\n");
 
   int* devOut[2];
   gpuErrChk(
@@ -166,24 +148,16 @@ void cluster(istream& in_stream, int k, int batch_size) {
   gpuErrChk(
     cudaMalloc(&devOut[1], sizeof(int) *  batch_size) );
 
-  // TODO(jg) remove
-  printf("Starting main loop to process input lines\n");
-
   // main loop to process input lines (each line corresponds to a review)
   int review_idx = 0;
   for (string review_str; getline(in_stream, review_str); review_idx++) {
     int i = (review_idx / batch_size) % 2;
     int j = review_idx % batch_size;
 
-    // TODO: readLSAReview into appropriate storage
+    // readLSAReview into appropriate storage
     readLSAReview(review_str, hostBuffers[i] + j * REVIEW_DIM);
     
-    // TODO(jg): remove
-    //printf("i = %d, j = %d\n", i, j);
-
-    // TODO: if you have filled up a batch, copy H->D, kernel, copy D->H,
-    //       and set callback to printerCallback. Will need to allocate
-    //       printerArg struct. Do all of this in a stream.
+    // If batch full, pass to device, compute, and copy output back
     if (j == batch_size - 1) {
       cudaMemcpyAsync(devBuffers[i], hostBuffers[i], 
                       sizeof(float) * REVIEW_DIM * batch_size,
@@ -204,14 +178,8 @@ void cluster(istream& in_stream, int k, int batch_size) {
     }
   }
 
-  // TODO(jg): remove
-  printf("Going to synchronize:\n");
-
   // wait for everything to end on GPU before final summary
   gpuErrChk(cudaDeviceSynchronize());
-
-  // TODO(jg) remove
-  printf("Finished device synchronize after main loop\n");
 
   // retrieve final cluster locations and counts
   int *cluster_counts = new int[k];
@@ -236,7 +204,15 @@ void cluster(istream& in_stream, int k, int batch_size) {
   delete[] cluster_counts;
   delete[] clusters;
 
-  // TODO: finish freeing memory, destroy streams
+  // finish freeing memory, destroy streams
+  cudaFreeHost(hostBuffers[0]);
+  cudaFreeHost(hostBuffers[1]);
+  cudaFreeHost(hostOut[0]);
+  cudaFreeHost(hostOut[1]);
+  gpuErrChk(cudaFree(devBuffers[0]));
+  gpuErrChk(cudaFree(devBuffers[1]));
+  gpuErrChk(cudaStreamDestroy(streams[0]));
+  gpuErrChk(cudaStreamDestroy(streams[1]));
 }
 
 int main(int argc, char** argv) {
