@@ -176,7 +176,10 @@ void cluster(istream& in_stream, int k, int batch_size) {
     int j = review_idx % batch_size;
 
     // TODO: readLSAReview into appropriate storage
-    readLSAReview(review_str, devBuffers[i] + j * REVIEW_DIM);
+    readLSAReview(review_str, hostBuffers[i] + j * REVIEW_DIM);
+    
+    // TODO(jg): remove
+    //printf("i = %d, j = %d\n", i, j);
 
     // TODO: if you have filled up a batch, copy H->D, kernel, copy D->H,
     //       and set callback to printerCallback. Will need to allocate
@@ -200,6 +203,9 @@ void cluster(istream& in_stream, int k, int batch_size) {
 
     }
   }
+
+  // TODO(jg): remove
+  printf("Going to synchronize:\n");
 
   // wait for everything to end on GPU before final summary
   gpuErrChk(cudaDeviceSynchronize());
@@ -234,8 +240,8 @@ void cluster(istream& in_stream, int k, int batch_size) {
 }
 
 int main(int argc, char** argv) {
-  int k = 5;
-  int batch_size = 32;
+  int k = 50;
+  int batch_size = 2048;
 
   if (argc == 1) {
     cluster(cin, k, batch_size);

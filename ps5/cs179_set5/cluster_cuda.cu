@@ -104,7 +104,7 @@ void cudaCluster(float *clusters, int *cluster_counts, int k,
 
   // grid_size = CEIL(batch_size / block_size)
   int grid_size = (batch_size + block_size - 1) / block_size;
-  int shmem_bytes = 0;
+  int shmem_bytes = sizeof(float) * k * REVIEW_DIM;
 
   sloppyClusterKernel<<<
     block_size, 
