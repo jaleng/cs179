@@ -241,7 +241,7 @@ void cluster(istream& in_stream, int k, int batch_size) {
 
 int main(int argc, char** argv) {
   int k = 50;
-  int batch_size = 2048;
+  int batch_size = 256;
 
   if (argc == 1) {
     cluster(cin, k, batch_size);

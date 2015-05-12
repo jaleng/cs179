@@ -15,7 +15,7 @@ import numpy as np
 FULL_PATH = sys.argv[1]
 
 def doc_iter(limit=None):
-    with open(FULL_PATH) as f:
+    with open(FULL_PATH + "shuffled_reviews.json") as f:
         for i, line in enumerate(f):
             if limit is not None and i >= limit:
                 break
@@ -37,10 +37,10 @@ def printer(iterable):
         print f.getvalue()[:-1]
 
 if __name__ == '__main__':
-    with open('review_bow.pkl', 'rb') as f:
+    with open(FULL_PATH + 'review_bow.pkl', 'rb') as f:
         cv = pickle.load(f)
 
-    with open('lsa.pkl', 'rb') as f:
+    with open(FULL_PATH + 'lsa.pkl', 'rb') as f:
         lsa = pickle.load(f)
 
     printer(transformer_iter(cv, lsa))

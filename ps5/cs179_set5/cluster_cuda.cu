@@ -88,8 +88,8 @@ void sloppyClusterKernel(float *clusters, int *cluster_counts, int k,
     }
 
     output[i] = closest_cluster;
+    int n = atomicAdd(cluster_counts + closest_cluster, 1);
     for (int feature = 0; feature < REVIEW_DIM; feature++) {
-      int n = atomicAdd(cluster_counts[closest_cluster], 1);
       atomicUpdateAverage(clusters + REVIEW_DIM * closest_cluster, 
                           n, 
                           data_pt_start[feature]);
