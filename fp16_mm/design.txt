@@ -1,0 +1,73 @@
+Task: multiply A x B = C
+
+Dimensions
+----------
+A: a_r x a_c
+B: b_r x b_c
+C: a_r x b_c
+
+b_r == a_c
+
+Data format
+-----------
+column-major
+example of 4x4 matrix
+ 0: (0, 0) start of col 0
+ 1: (1, 0)
+ 2: (2, 0)
+ 3: (3, 0)
+
+ 4: (0, 1) start of col 1
+ 5: (1, 1)
+ 6: (2, 1)
+ 7: (3, 1)
+
+ 8: (0, 1) start of col 2
+ 9: (1, 1)
+10: (2, 1)
+11: (3, 1)
+
+12: (0, 1) start of col 3
+13: (1, 1)
+14: (2, 1)
+15: (3, 1)
+
+Approach
+----------
+Each block will write to a 64 x 64 section of C.
+
+Each warp will write to a 64 x 1 section of Cl
+Each thread will write to a 2 x 1 section of C.
+
+
+kernel:
+  block_row = blockIdx.y;
+  block_col = blockIdx.x;
+  thread_row = threadIdx.y * 2;
+  thread_col = threadIdx.x;
+  
+  num_block_cols = a_c;
+
+  acc1 = 0;
+  acc2 = 0;
+
+  for (block_col_idx = 0; block_col_idx < num_block_cols; ++block_col_idx) {
+    // store A block (block_row, block_col_idx) into shmem
+
+    // store B block (block_col_idx, block_col) into shmem
+
+    // sync threads
+
+    for (col_idx = 0; col_idx < cols_per_block; ++col_idx) {
+      // read 2 fp16's (1 float) from the a block (a11, a21)
+
+      // read 2 more (next col) from the a block (a12, a22)
+
+      // read 2 fp16's (1 float) from the b block b1 (first row), b2 (next row)
+
+      acc1 += a11 * b1 + a12 * b2;
+      acc2 += a21 * b1 + a22 * b2;
+    }
+  }
+
+  // Store acc1 and acc2 into the appropriate spot in C (in 1 write as a float)
