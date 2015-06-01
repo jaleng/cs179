@@ -152,15 +152,17 @@ int main(int argc, char *argv[]) {
   half *id_64x64 = new half[64*64];
 
   for (int i = 0; i < 64*64; ++i) {
-    id_64x64[i] = 0.0;
+    id_64x64[i] = half(1.0); // DEBUG, was 0.0
   }
+  /* DEBUG, was uncommented
   for (int i = 0; i < 64; ++i) {
-    id_64x64[IDX2C(i, i, 64)] = 1.0;
+    id_64x64[IDX2C(i, i, 64)] = half(1.0);
   }
+  */
 
   half *seq_64x64 = new half[64*64];
   for (int i = 0; i < 64*64; ++i) {
-    seq_64x64[i] = i;
+    seq_64x64[i] = half(1.0); // DEBUG, was half(i);
   }
 
   float *id_64x64_fp = (float *) id_64x64;
@@ -196,6 +198,9 @@ int main(int argc, char *argv[]) {
   // Copy B to device
   gpuErrChk(cudaMemcpy(d_B, h_B, B_sz, cudaMemcpyHostToDevice));
 
+  // DEBUG, clear out C
+  gpuErrChk(cudaMemset(d_C, 1, C_sz));
+
   // Run kernel
   run_matmul_kernel(d_A, d_B, d_C, rows_a/2, cols_a, rows_b/2, cols_b);
 
@@ -215,10 +220,16 @@ int main(int argc, char *argv[]) {
 
   // Print out C -- convert halfs to floats and print those
   half *h_C_hp = (half *) h_C;
+  printf("cols:    ");
+  for (int c = 0; c < cols_c; ++c) {
+    printf("%15d ", c);
+  }
+  printf("\n");
+
   for (int r = 0; r < rows_c; ++r) {
-    printf("row %d: ", r);
+    printf("row %3d: ", r);
     for (int c = 0; c < cols_c; ++c) {
-      printf("%f\t", float(h_C_hp[IDX2C(r, c, rows_c)]));
+      printf("%15f ", float(h_C_hp[IDX2C(r, c, rows_c)]));
     }
     printf("\n");
   }
