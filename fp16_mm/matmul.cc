@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
   gpuErrChk(cudaMemcpy(d_B, h_B, B_sz, cudaMemcpyHostToDevice));
 
   // Run kernel
-  run_matmul_kernel(d_A, d_B, d_C, rows_a/2, cols_a, rows_b/2, cols_b)
+  run_matmul_kernel(d_A, d_B, d_C, rows_a/2, cols_a, rows_b/2, cols_b);
 
   // Copy C from device to host
   gpuErrChk(cudaMemcpy(h_C, d_C, C_sz, cudaMemcpyDeviceToHost));

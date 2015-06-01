@@ -20,6 +20,14 @@ void cudaDoSomething(...) {
 }
 */
 
+void run_matmul_kernel(float *a, float *b, float *c, 
+                       int rows_a, int cols_a, int rows_b, int cols_b) {
+  dim3 blockSize(32,32);
+  dim3 gridSize(rows_a /32, cols_b / 64);
+
+  matmulKernel<<<gridSize, blockSize>>>(a,b,c,rows_a, cols_a, rows_b, cols_b);
+}
+
 /* Casting stuff
 __device__ unsigned short __float2half_rn (float x)
 __device__ float __half2float (unsigned short x)
@@ -43,10 +51,10 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   int block_ncols = 64;
   int block_nrows = 32;
 
-  int block_row = blockIdx.y;
-  int block_col = blockIdx.x;
-  int thread_row = threadIdx.y;
-  int thread_col = threadIdx.x;
+  int block_row = blockIdx.x;
+  int block_col = blockIdx.y;
+  int thread_row = threadIdx.x;
+  int thread_col = threadIdx.y;
   while (block_row < num_block_rows_in_c && block_col < num_block_cols_in_c) {
     int num_block_cols = cols_a;
 
@@ -154,10 +162,10 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     // If the grid is not large enough to cover the entire matrix,
     // we must move to the next set of boxes to compute.
     // We do this in a column-major way.
-    block_row += gridDim.y;
+    block_row += gridDim.x;
     if (block_row >= num_block_rows_in_c) {
-      block_row = blockIdx.y;
-      block_col += gridDim.x;
+      block_row = blockIdx.x;
+      block_col += gridDim.y;
     }
   }
 }
