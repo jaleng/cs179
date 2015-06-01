@@ -7,8 +7,10 @@
 
 #include <cuda_runtime.h>
 
-#include "transpose_cuda.cuh"
+#include "matmul_cuda.cuh"
 
+// For the cublas example code
+#define IDX2C(i,j,ld) (((j)*(ld))+(i))
 /*
 NOTE: You can use this macro to easily check cuda error codes
 and get more information.
@@ -74,9 +76,10 @@ int main(int argc, char *argv[]) {
 
   // Some cublas example code to get started
   // START CUBLAS EXAMPLE CODE
+  float cublas_ex_code_time_ms = -1;
+  START_TIMER();
 #define M 6
 #define N 5
-#define IDX2C(i,j,ld) (((j)*(ld))+(i))
   cudaError_t cudaStat;    
   cublasStatus_t stat;
   cublasHandle_t handle;
@@ -127,8 +130,10 @@ int main(int argc, char *argv[]) {
       printf ("\n");
   }
   free(a);
-  return EXIT_SUCCESS;
+  // return EXIT_SUCCESS;
   // END CUBLAS EXAMPLE CODE
+  STOP_RECORD_TIMER(cublas_ex_code_time_ms);
+  printf("My time was: %f ms \n", cublas_ex_code_time_ms);
 
 
 }
