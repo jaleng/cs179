@@ -37,7 +37,7 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
 
   // Right now we're assuming rows_a, cols_a, and cols_b are divisible by 32.
   int num_block_rows_in_c = rows_a / 32;
-  int num_block_cols_in_c = cols_b / 32;
+  int num_block_cols_in_c = cols_b / 64;
 
   // TODO(jg): make these constants
   int block_ncols = 64;

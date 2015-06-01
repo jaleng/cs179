@@ -2,6 +2,8 @@
 #define CUDA_MATMUL_CUH
 
 #include "cublas_v2.h"
+#include "half.hpp"
+
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
 
 /*

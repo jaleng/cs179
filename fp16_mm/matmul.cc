@@ -9,8 +9,9 @@
 
 #include "matmul_cuda.cuh"
 
-// For the cublas example code
-#define IDX2C(i,j,ld) (((j)*(ld))+(i))
+using half_float::half;
+using namespace half_float::literal;
+
 /*
 NOTE: You can use this macro to easily check cuda error codes
 and get more information.
@@ -30,6 +31,7 @@ inline void gpuAssert(cudaError_t code,
     exit(code);
   }
 }
+
 
 // fills fill with random numbers is [0, 1]. Size is number of elements to
 // assign
@@ -76,6 +78,7 @@ int main(int argc, char *argv[]) {
 
   // Some cublas example code to get started
   // START CUBLAS EXAMPLE CODE
+  /*********************************************************
   float cublas_ex_code_time_ms = -1;
   START_TIMER();
 #define M 6
@@ -135,5 +138,95 @@ int main(int argc, char *argv[]) {
   STOP_RECORD_TIMER(cublas_ex_code_time_ms);
   printf("My time was: %f ms \n", cublas_ex_code_time_ms);
 
+  *****************************************************************************/
+
+  // TESTING CODE
+
+  // TODO: create 3 64x64 flp16 matrix
+  int rows_a = 64;
+  int cols_a = 64;
+  int rows_b = 64;
+  int cols_b = 64;
+  int rows_c = 64;
+  int cols_c = 64;
+
+  half *id_64x64 = new half[64*64];
+
+  for (int i = 0; i < 64*64; ++i) {
+    id_64x64[i] = 0.0_h;
+  }
+  for (int i = 0; i < 64; ++i) {
+    id_64x64[IDX2C(i, i, 64)] = 1.0_h;
+  }
+
+  half *seq_64x64 = new half[64*64];
+  for (int i = 0; i < 64*64; ++i) {
+    seq_64x64[i] = i;
+  }
+
+  float *id_64x64_fp = (float *) id_64x64;
+  float *seq_64x64_fp = (float *) seq_64x64;
+
+  // Start timing our multiplication
+  float my_kernal_time_ms = -1;
+  START_TIMER();
+
+  // Allocate memory for A on device
+  // Allocate memory for B on device
+  // Allocate memory for C on device
+  float *h_A = id_64x64_fp;
+  size_t A_sz = (rows_a/2) * cols_a * sizeof(float);
+
+  float *h_B = seq_64x64_fp;
+  size_t B_sz = (rows_b/2) * cols_b * sizeof(float);
+
+  float *h_C = new float[(rows_a/2) * cols_b];
+  size_t C_sz = (rows_a/2) * cols_b * sizeof(float);
+
+  float *d_A;
+  float *d_B;
+  float *d_C;
+
+  gpuErrChk(cudaMalloc(&d_A, A_sz));
+  gpuErrChk(cudaMalloc(&d_B, B_sz));
+  gpuErrChk(cudaMalloc(&d_C, C_sz));
+
+  // Copy A to device
+  gpuErrChk(cudaMemcpy(d_A, h_A, A_sz, cudaMemcpyHostToDevice));
+
+  // Copy B to device
+  gpuErrChk(cudaMemcpy(d_B, h_B, B_sz, cudaMemcpyHostToDevice));
+
+  // Run kernel
+  run_matmul_kernel(d_A, d_B, d_C, rows_a/2, cols_a, rows_b/2, cols_b)
+
+  // Copy C from device to host
+  gpuErrChk(cudaMemcpy(h_C, d_C, C_sz, cudaMemcpyDeviceToHost));
+
+  // Free A on device
+  gpuErrChk(cudaFree(d_A));
+  // Free B on device
+  gpuErrChk(cudaFree(d_B));
+  // Free C on device
+  gpuErrChk(cudaFree(d_C));
+
+  STOP_RECORD_TIMER(my_kernal_time_ms);
+
+  printf("My kernel time was %fms.\n", my_kernal_time_ms);
+
+  // Print out C -- convert halfs to floats and print those
+  half *h_C_hp = (half *) h_C;
+  for (int r = 0; r < rows_c; ++r) {
+    printf("row %d: ", r);
+    for (int c = 0; c < cols_c; ++c) {
+      printf("%f\t", float(h_C_hp(IDX2C(r, c, rows_c))));
+    }
+    printf("\n");
+  }
+
+  // Free host memory
+  delete[] id_64x64;
+  delete[] seq_64x64;
+  delete[] h_C;
 
 }
