@@ -13,4 +13,6 @@ void cudaDoSomething(const float *d_input,
                    TransposeImplementation type);
 
 */
+void run_matmul_kernel(float *a, float *b, float *c,
+                       int rows_a, int cols_a, int rows_b, int cols_b);
 #endif

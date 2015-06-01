@@ -10,7 +10,6 @@
 #include "matmul_cuda.cuh"
 
 using half_float::half;
-using namespace half_float::literal;
 
 /*
 NOTE: You can use this macro to easily check cuda error codes
@@ -153,10 +152,10 @@ int main(int argc, char *argv[]) {
   half *id_64x64 = new half[64*64];
 
   for (int i = 0; i < 64*64; ++i) {
-    id_64x64[i] = 0.0_h;
+    id_64x64[i] = 0.0;
   }
   for (int i = 0; i < 64; ++i) {
-    id_64x64[IDX2C(i, i, 64)] = 1.0_h;
+    id_64x64[IDX2C(i, i, 64)] = 1.0;
   }
 
   half *seq_64x64 = new half[64*64];
@@ -219,7 +218,7 @@ int main(int argc, char *argv[]) {
   for (int r = 0; r < rows_c; ++r) {
     printf("row %d: ", r);
     for (int c = 0; c < cols_c; ++c) {
-      printf("%f\t", float(h_C_hp(IDX2C(r, c, rows_c))));
+      printf("%f\t", float(h_C_hp[IDX2C(r, c, rows_c)]));
     }
     printf("\n");
   }

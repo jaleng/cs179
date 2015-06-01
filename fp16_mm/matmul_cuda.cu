@@ -20,13 +20,6 @@ void cudaDoSomething(...) {
 }
 */
 
-void run_matmul_kernel(float *a, float *b, float *c, 
-                       int rows_a, int cols_a, int rows_b, int cols_b) {
-  dim3 blockSize(32,32);
-  dim3 gridSize(rows_a /32, cols_b / 64);
-
-  matmulKernel<<<gridSize, blockSize>>>(a,b,c,rows_a, cols_a, rows_b, cols_b);
-}
 
 /* Casting stuff
 __device__ unsigned short __float2half_rn (float x)
@@ -168,4 +161,12 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       block_col += gridDim.y;
     }
   }
+}
+
+void run_matmul_kernel(float *a, float *b, float *c, 
+                       int rows_a, int cols_a, int rows_b, int cols_b) {
+  dim3 blockSize(32,32);
+  dim3 gridSize(rows_a /32, cols_b / 64);
+
+  matmulKernel<<<gridSize, blockSize>>>(a,b,c,rows_a, cols_a, rows_b, cols_b);
 }
