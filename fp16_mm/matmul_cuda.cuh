@@ -2,6 +2,8 @@
 #define CUDA_MATMUL_CUH
 
 #include "cublas_v2.h"
+#define IDX2C(i,j,ld) (((j)*(ld))+(i))
+
 /*
 void cudaDoSomething(const float *d_input,
                    float *d_output,
@@ -9,5 +11,4 @@ void cudaDoSomething(const float *d_input,
                    TransposeImplementation type);
 
 */
-
 #endif
