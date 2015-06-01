@@ -139,11 +139,11 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     // Prepare to store values
     unsigned short half1 = __float2half_rn(acc11);
     unsigned short half2 = __float2half_rn(acc21);
-    float col_1_f = __int_as_float((((int) half1) << 16) & ((int) half2))
+    float col_1_f = __int_as_float((((int) half1) << 16) & ((int) half2));
 
     half1 = __float2half_rn(acc12);
     half2 = __float2half_rn(acc22);
-    float col_2_f = __int_as_float((((int) half1) << 16) & ((int) half2))
+    float col_2_f = __int_as_float((((int) half1) << 16) & ((int) half2));
 
     // Store into the appropriate spot in C (in 1 write as a float)
     int c_block_start_idx = IDX2C(block_row * block_nrows, block_col * block_ncols, rows_a);
