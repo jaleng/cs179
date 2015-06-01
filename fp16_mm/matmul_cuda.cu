@@ -39,12 +39,16 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   int num_block_rows_in_c = rows_a / 32;
   int num_block_cols_in_c = cols_b / 32;
 
+  // TODO(jg): make these constants
+  int block_ncols = 64;
+  int block_nrows = 32;
+
   int block_row = blockIdx.y;
   int block_col = blockIdx.x;
   int thread_row = threadIdx.y;
   int thread_col = threadIdx.x;
   while (block_row < num_block_rows_in_c && block_col < num_block_cols_in_c) {
-    int num_block_cols = a_c;
+    int num_block_cols = cols_a;
 
     // Accumulators for this thread
     float acc11 = 0;
@@ -52,7 +56,7 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     float acc21 = 0;
     float acc22 = 0;
 
-    for (block_col_idx = 0; block_col_idx < num_block_cols; ++block_col_idx) {
+    for (int block_col_idx = 0; block_col_idx < num_block_cols; ++block_col_idx) {
       // store A block (block_row, block_col_idx) into shmem
       //// A starts at a, and is column major
       //// We want to store the item in the thread_col column (of the block)
@@ -90,7 +94,7 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       __syncthreads();
 
 
-      for (col_idx = 0; col_idx < cols_per_block; col_idx += 2) {
+      for (int col_idx = 0; col_idx < block_ncols; col_idx += 2) {
         // read 2 fp16's (1 float) from the a block (a11, a21)
         int two_halves = __float_as_int(
                            shmem_A[IDX2C(thread_row, col_idx, block_nrows)]);
@@ -101,7 +105,7 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
         two_halves = __float_as_int(
                        shmem_A[IDX2C(thread_row, col_idx + 1, block_nrows)]);
         unsigned short a12 = (unsigned short) __int_as_float(two_halves >> 16);
-        unsigned short a22 = (unsigned short) __int_as_float((two_halves << 16) >> 16)
+        unsigned short a22 = (unsigned short) __int_as_float((two_halves << 16) >> 16);
 
         float a11_f = __half2float(a11);
         float a21_f = __half2float(a21);
