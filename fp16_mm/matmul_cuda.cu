@@ -33,10 +33,10 @@ __device__ int __float_as_int (float x)
 __global__
 void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
                   int rows_b, int cols_b) {
-  __shared__ float shmem[32*64*2];
+  __shared__ float shmem[32*64];
 
   float * shmem_A = shmem;
-  float * shmem_B = shmem + (32 * 64);
+  //float * shmem_B = shmem + (32 * 64);
 
   // Right now we're assuming rows_a, cols_a, and cols_b are divisible by 32.
   int num_block_rows_in_c = rows_a / 32;
