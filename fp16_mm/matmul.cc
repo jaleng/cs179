@@ -11,6 +11,8 @@
 
 using half_float::half;
 
+print_half_matrix(half *h_p, int nrows, int ncols);
+
 /*
 NOTE: You can use this macro to easily check cuda error codes
 and get more information.
@@ -168,6 +170,17 @@ int main(int argc, char *argv[]) {
   float *id_64x64_fp = (float *) id_64x64;
   float *seq_64x64_fp = (float *) seq_64x64;
 
+
+  // DEBUG: try printing out the matrices we created
+  printf("\n\nPrinting out id_64x64.\n");
+  print_half_matrix(id_64x64, 64, 64);
+
+  printf("\n\nPrinting out seq_64x64.\n");
+  print_half_matrix(seq_64x64, 64, 64);
+
+
+
+
   // Start timing our multiplication
   float my_kernal_time_ms = -1;
   START_TIMER();
@@ -220,23 +233,28 @@ int main(int argc, char *argv[]) {
 
   // Print out C -- convert halfs to floats and print those
   half *h_C_hp = (half *) h_C;
-  printf("cols:    ");
-  for (int c = 0; c < cols_c; ++c) {
-    printf("%15d ", c);
-  }
-  printf("\n");
-
-  for (int r = 0; r < rows_c; ++r) {
-    printf("row %3d: ", r);
-    for (int c = 0; c < cols_c; ++c) {
-      printf("%15f ", float(h_C_hp[IDX2C(r, c, rows_c)]));
-    }
-    printf("\n");
-  }
+  // DEBUG, was uncommented
+  //print_half_matrix(h_C_hp, 64, 64);
 
   // Free host memory
   delete[] id_64x64;
   delete[] seq_64x64;
   delete[] h_C;
 
+}
+
+print_half_matrix(half *h_p, int nrows, int ncols) {
+  printf("cols:    ");
+  for (int c = 0; c < ncols; ++c) {
+    printf("%15d ", c);
+  }
+  printf("\n");
+
+  for (int r = 0; r < nrows; ++r) {
+    printf("row %3d: ", r);
+    for (int c = 0; c < cols_c; ++c) {
+      printf("%15f ", float(h_p[IDX2C(r, c, nrows)]));
+    }
+    printf("\n");
+  }  
 }
