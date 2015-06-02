@@ -174,11 +174,11 @@ int main(int argc, char *argv[]) {
 
 
   // DEBUG: try printing out the matrices we created
-  printf("\n\nPrinting out id.\n");
-  print_half_matrix(id, test_size, test_size);
+  //printf("\n\nPrinting out id.\n");
+  //print_half_matrix(id, test_size, test_size);
 
-  printf("\n\nPrinting out seq.\n");
-  print_half_matrix(seq, test_size, test_size);
+  //printf("\n\nPrinting out seq.\n");
+  //print_half_matrix(seq, test_size, test_size);
 
   half *a_hp = id;
   half *b_hp = seq;
@@ -188,14 +188,14 @@ int main(int argc, char *argv[]) {
   float *h_A_f = new float[test_size*test_size];
   for (int c = 0; c < cols_a; ++c) {
     for (int r = 0; r < rows_a; ++r) {
-      h_A_f[IDX2C(r, c, rows_a)] = half_cast(a_hp[IDX2C(r, c, rows_a)]);
+      h_A_f[IDX2C(r, c, rows_a)] = a_hp[IDX2C(r, c, rows_a)];
     }
   }
 
   float *h_B_f = new float[test_size*test_size];
   for (int c = 0; c < cols_b; ++c) {
     for (int r = 0; r < rows_b; ++r) {
-      h_B_f[IDX2C(r, c, rows_b)] = half_cast(b_hp[IDX2C(r, c, rows_b)]);
+      h_B_f[IDX2C(r, c, rows_b)] = b_hp[IDX2C(r, c, rows_b)];
     }
   }
 
@@ -228,13 +228,13 @@ int main(int argc, char *argv[]) {
   gpuErrChk(cudaMalloc(&d_B_h, B_sz));
   gpuErrChk(cudaMalloc(&d_C_h, C_sz));
 
-  gpuErrChk(cudaMalloc(&d_A_f, A_sz));
-  gpuErrChk(cudaMalloc(&d_B_f, B_sz));
-  gpuErrChk(cudaMalloc(&d_C_f, C_sz));
+  gpuErrChk(cudaMalloc(&d_A_f, A_sz*2));
+  gpuErrChk(cudaMalloc(&d_B_f, B_sz*2));
+  gpuErrChk(cudaMalloc(&d_C_f, C_sz*2));
 
   // Copy A to device
   gpuErrChk(cudaMemcpy(d_A_h, h_A, A_sz, cudaMemcpyHostToDevice));
-  gpuErrChk(cudaMemcpy(d_A_f, h_A_, A_sz, cudaMemcpyHostToDevice));
+  gpuErrChk(cudaMemcpy(d_A_f, h_A_f, A_sz, cudaMemcpyHostToDevice));
 
 
   // Copy B to device
@@ -270,20 +270,22 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
   }
 
+  float alpha = 1.0;
+  float beta = 0.0;
   START_TIMER();
   float cublas_time_ms = -1;
   stat = cublasSgemm(handle,
                      CUBLAS_OP_N,
                      CUBLAS_OP_N,
                      test_size, test_size, test_size,
-                     1,
-                     h_A_f, rows_a,
-                     h_B_f, rows_b,
-                     1,
+                     &alpha,
+                     d_A_f, rows_a,
+                     d_B_f, rows_b,
+                     &beta,
                      d_C_f, rows_c
                      );
   STOP_RECORD_TIMER(cublas_time_ms);
-  printf("CUBLAS time was %fms.\n", my_kernel_time_ms);
+  printf("CUBLAS time was %fms.\n", cublas_time_ms);
 
 
   if (stat != CUBLAS_STATUS_SUCCESS) {
@@ -312,10 +314,10 @@ int main(int argc, char *argv[]) {
   // Print out C -- convert halfs to floats and print those
   half *h_C_hp = (half *) h_C_me;
   // DEBUG, was uncommented
-  printf("\n\n*******Result from my kernel\n\n");
-  print_half_matrix(h_C_hp, test_size, test_size);
-  printf("\n\n*******Result from cublas kernel\n\n");
-  print_single_matrix(h_C_cublas, test_size, test_size);
+  //printf("\n\n*******Result from my kernel\n\n");
+  //print_half_matrix(h_C_hp, test_size, test_size);
+  //printf("\n\n*******Result from cublas kernel\n\n");
+  //print_single_matrix(h_C_cublas, test_size, test_size);
 
   // Cleanup cublas
   cublasDestroy(handle);
