@@ -143,40 +143,41 @@ int main(int argc, char *argv[]) {
 
   // TESTING CODE
 
-  // TODO: create 3 64x64 flp16 matrix
-  int rows_a = 64;
-  int cols_a = 64;
-  int rows_b = 64;
-  int cols_b = 64;
-  int rows_c = 64;
-  int cols_c = 64;
+  // TODO: create 3 flp16 matrices
+  int test_size = 128;
+  int rows_a = test_size;
+  int cols_a = test_size;
+  int rows_b = test_size;
+  int cols_b = test_size;
+  int rows_c = test_size;
+  int cols_c = test_size;
 
-  half *id_64x64 = new half[64*64];
+  half *id = new half[test_size*test_size];
 
-  for (int i = 0; i < 64*64; ++i) {
-    id_64x64[i] = half(0.0); 
+  for (int i = 0; i < test_size*test_size; ++i) {
+    id[i] = half(0.0); 
   }
   
-  for (int i = 0; i < 64; ++i) {
-    id_64x64[IDX2C(i, i, 64)] = half(1.0);
+  for (int i = 0; i < test_size; ++i) {
+    id[IDX2C(i, i, test_size)] = half(1.0);
   }
   
 
-  half *seq_64x64 = new half[64*64];
-  for (int i = 0; i < 64*64; ++i) {
-    seq_64x64[i] = half(i);
+  half *seq = new half[test_size*test_size];
+  for (int i = 0; i < test_size*test_size; ++i) {
+    seq[i] = half(i);
   }
 
-  float *id_64x64_fp = (float *) id_64x64;
-  float *seq_64x64_fp = (float *) seq_64x64;
+  float *id_fp = (float *) id;
+  float *seq_fp = (float *) seq;
 
 
   // DEBUG: try printing out the matrices we created
-  printf("\n\nPrinting out id_64x64.\n");
-  print_half_matrix(id_64x64, 64, 64);
+  printf("\n\nPrinting out id.\n");
+  print_half_matrix(id, test_size, test_size);
 
-  printf("\n\nPrinting out seq_64x64.\n");
-  print_half_matrix(seq_64x64, 64, 64);
+  printf("\n\nPrinting out seq.\n");
+  print_half_matrix(seq, test_size, test_size);
 
 
 
@@ -188,10 +189,10 @@ int main(int argc, char *argv[]) {
   // Allocate memory for A on device
   // Allocate memory for B on device
   // Allocate memory for C on device
-  float *h_A = id_64x64_fp;
+  float *h_A = id_fp;
   size_t A_sz = (rows_a/2) * cols_a * sizeof(float);
 
-  float *h_B = seq_64x64_fp;
+  float *h_B = seq_fp;
   size_t B_sz = (rows_b/2) * cols_b * sizeof(float);
 
   float *h_C = new float[(rows_a/2) * cols_b];
@@ -234,11 +235,11 @@ int main(int argc, char *argv[]) {
   // Print out C -- convert halfs to floats and print those
   half *h_C_hp = (half *) h_C;
   // DEBUG, was uncommented
-  print_half_matrix(h_C_hp, 64, 64);
+  print_half_matrix(h_C_hp, test_size, test_size);
 
   // Free host memory
-  delete[] id_64x64;
-  delete[] seq_64x64;
+  delete[] id;
+  delete[] seq;
   delete[] h_C;
 
 }
