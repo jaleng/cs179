@@ -58,7 +58,7 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   int offset2_for_b_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_b);
 
   int c_offset1 = IDX2C(thread_row, thread_col, rows_a);
-  int c_offset2 = coffset1 + rows_a;
+  int c_offset2 = c_offset1 + rows_a;
 
   while (block_row < num_block_rows_in_c && block_col < num_block_cols_in_c) {
 

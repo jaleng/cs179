@@ -1,2 +1,3 @@
-My kernel time was 0.055904ms.
-CUBLAS time was 0.061184ms.
+My kernel time was 0.061184ms.
+CUBLAS time was 0.075488ms.
+My kernel was 18.948709%faster.

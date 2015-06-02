@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   // TESTING CODE
 
   // We are creating square matrices A, B to test our matrix multiplication.
-  int test_size = 128;
+  int test_size = 4096;
   int rows_a = test_size;
   int cols_a = test_size;
   int rows_b = test_size;
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
   }
 
-  if(cublas_time_ms < my_kernel_time_ms) {
+  if(cublas_time_ms > my_kernel_time_ms) {
     printf("My kernel was %f%%faster.\n", (1 - my_kernel_time_ms/cublas_time_ms)*100);
   } else {
     printf("My kernel was %f%% slower.\n", (my_kernel_time_ms/cublas_time_ms - 1) * 100);
