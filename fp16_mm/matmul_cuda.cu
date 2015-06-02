@@ -109,8 +109,8 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
 
       //// TRYING NEW THING
       // Read elem from column in B for later warp shuffling
-      b_col1_item = shmem_B[IDX2C(thread_row, thread_col, BLOCK_NROWS)];
-      b_col2_item = shmem_B[IDX2C(thread_row, thread_col + 1, BLOCK_NROWS)];
+      float b_col1_item = shmem_B[IDX2C(thread_row, thread_col, BLOCK_NROWS)];
+      float b_col2_item = shmem_B[IDX2C(thread_row, thread_col + 1, BLOCK_NROWS)];
 
 
 
