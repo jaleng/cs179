@@ -54,8 +54,8 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   int offset1_for_a_to_shmem = IDX2C(thread_row, thread_col/2, rows_a);
   int offset2_for_a_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_a);
 
-  int offset1_for_b_to_shmem = IDX2C(thread_row, thread_col/2 , rows_b);
-  int offset2_for_b_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_b);
+  //int offset1_for_b_to_shmem = IDX2C(thread_row, thread_col/2 , rows_b);
+  //int offset2_for_b_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_b);
 
   int c_offset1 = IDX2C(thread_row, thread_col, rows_a);
   int c_offset2 = c_offset1 + rows_a;
@@ -97,20 +97,20 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       // store B block (block_col_idx, block_col) into shmem
 
       // Load the first 32 columns
-      shmem_B[shmem_idx1]
-        = b[b_block_start_idx + offset1_for_b_to_shmem];
+      //shmem_B[shmem_idx1]
+      //  = b[b_block_start_idx + offset1_for_b_to_shmem];
 
       // Load the second 32 columns
-      shmem_B[shmem_idx2]
-        = b[b_block_start_idx + offset2_for_b_to_shmem];
+      //shmem_B[shmem_idx2]
+      //  = b[b_block_start_idx + offset2_for_b_to_shmem];
 
       // Sync threads so shmem prepared for later accesses.
       __syncthreads();
 
       //// TRYING NEW THING
       // Read elem from column in B for later warp shuffling
-      float b_col1_item = shmem_B[IDX2C(thread_row, thread_col, BLOCK_NROWS)];
-      float b_col2_item = shmem_B[IDX2C(thread_row, thread_col + 1, BLOCK_NROWS)];
+      float b_col1_item = b[b_block_start_idx + IDX2C(thread_row, thread_col, rows_b)];
+      float b_col2_item = b[b_block_start_idx + IDX2C(thread_row, thread_col + 1, rows_b)];
 
 
 

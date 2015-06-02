@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   // TESTING CODE
 
   // We are creating square matrices A, B to test our matrix multiplication.
-  int test_size = 128;
+  int test_size = 4096;
   int rows_a = test_size;
   int cols_a = test_size;
   int rows_b = test_size;
@@ -255,11 +255,11 @@ int main(int argc, char *argv[]) {
   gpuErrChk(cudaFree(d_C_f));
 
   //// DEBUG: Print out the resulting matrices
-  half *h_C_hp = (half *) h_C_mymmul;
-  printf("\n\n*******Result from my kernel\n\n");
-  print_half_matrix(h_C_hp, test_size, test_size);
-  printf("\n\n*******Result from cublas kernel\n\n");
-  print_single_matrix(h_C_cublas, test_size, test_size);
+  //half *h_C_hp = (half *) h_C_mymmul;
+  //printf("\n\n*******Result from my kernel\n\n");
+  //print_half_matrix(h_C_hp, test_size, test_size);
+  //printf("\n\n*******Result from cublas kernel\n\n");
+  //print_single_matrix(h_C_cublas, test_size, test_size);
 
   // Cleanup cublas
   cublasDestroy(handle);
