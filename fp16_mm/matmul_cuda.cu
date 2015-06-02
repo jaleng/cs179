@@ -57,6 +57,9 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   int offset1_for_b_to_shmem = IDX2C(thread_row, thread_col/2 , rows_b);
   int offset2_for_b_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_b);
 
+  int c_offset1 = IDX2C(thread_row, thread_col, rows_a);
+  int c_offset2 = coffset1 + rows_a;
+
   while (block_row < num_block_rows_in_c && block_col < num_block_cols_in_c) {
 
     // Accumulators for this thread
@@ -94,11 +97,11 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       // store B block (block_col_idx, block_col) into shmem
 
       // Load the first 32 columns
-      shmem_B[IDX2C(thread_row, thread_col/2 , BLOCK_NROWS)]
+      shmem_B[shmem_idx1]
         = b[b_block_start_idx + offset1_for_b_to_shmem];
 
       // Load the second 32 columns
-      shmem_B[IDX2C(thread_row, thread_col/2 + 32, BLOCK_NROWS)]
+      shmem_B[shmem_idx2]
         = b[b_block_start_idx + offset2_for_b_to_shmem];
 
       // Sync threads so shmem prepared for later accesses.
@@ -107,16 +110,16 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
 
       for (int col_idx = 0; col_idx < BLOCK_NCOLS; col_idx += 2) {
         // read 2 fp16's (1 float) from the a block (a11, a21)
-        int two_halves = __float_as_int(
+        int two_halves1 = __float_as_int(
                            shmem_A[IDX2C(thread_row, col_idx, BLOCK_NROWS)]);
-        unsigned short a21 = (unsigned short) (two_halves >> 16);
-        unsigned short a11 = (unsigned short) ((two_halves << 16) >> 16);
+        unsigned short a21 = (unsigned short) (two_halves1 >> 16);
+        unsigned short a11 = (unsigned short) ((two_halves1 << 16) >> 16);
 
         // read 2 more (next col) from the a block (a12, a22)
-        two_halves = __float_as_int(
+        int two_halves2 = __float_as_int(
                        shmem_A[IDX2C(thread_row, col_idx + 1, BLOCK_NROWS)]);
-        unsigned short a22 = (unsigned short) (two_halves >> 16);
-        unsigned short a12 = (unsigned short) ((two_halves << 16) >> 16);
+        unsigned short a22 = (unsigned short) (two_halves2 >> 16);
+        unsigned short a12 = (unsigned short) ((two_halves2 << 16) >> 16);
 
         float a11_f = __half2float(a11);
         float a21_f = __half2float(a21);
@@ -124,16 +127,16 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
         float a22_f = __half2float(a22);
 
         // read 2 fp16's (1 float) from the b block b1 (first row), b2 (next row)
-        two_halves = __float_as_int(
-                       shmem_B[IDX2C(col_idx/2, thread_col, BLOCK_NROWS)]); // DEBUG put /2 after col_idx
-        unsigned short b21 = (unsigned short) (two_halves >> 16);
-        unsigned short b11 = (unsigned short) ((two_halves << 16) >> 16);
+        int two_halves3 = __float_as_int(
+                       shmem_B[IDX2C(col_idx/2, thread_col, BLOCK_NROWS)]);
+        unsigned short b21 = (unsigned short) (two_halves3 >> 16);
+        unsigned short b11 = (unsigned short) ((two_halves3 << 16) >> 16);
 
-        two_halves = __float_as_int(
-                       shmem_B[IDX2C(col_idx/2, thread_col + 1, BLOCK_NROWS)]); // DEBUG put /2 after col_idx
+        int two_halves4 = __float_as_int(
+                       shmem_B[IDX2C(col_idx/2, thread_col + 1, BLOCK_NROWS)]);
 
-        unsigned short b22 = (unsigned short) (two_halves >> 16);
-        unsigned short b12 = (unsigned short) ((two_halves << 16) >> 16);
+        unsigned short b22 = (unsigned short) (two_halves4 >> 16);
+        unsigned short b12 = (unsigned short) ((two_halves4 << 16) >> 16);
 
         float b11_f = __half2float(b11);
         float b21_f = __half2float(b21);
@@ -148,18 +151,18 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     }
 
     // Prepare to store values
-    unsigned short half1 = __float2half_rn(acc11);
-    unsigned short half2 = __float2half_rn(acc21);
-    float col_1_f = __int_as_float((((int) half2) << 16) | ((int) half1)); // DEBUG swapped half1 and 2
+    unsigned short half11 = __float2half_rn(acc11);
+    unsigned short half21 = __float2half_rn(acc21);
+    float col_1_f = __int_as_float((((int) half21) << 16) | ((int) half11)); // DEBUG swapped half1 and 2
 
-    half1 = __float2half_rn(acc12);
-    half2 = __float2half_rn(acc22);
-    float col_2_f = __int_as_float((((int) half2) << 16) | ((int) half1)); // DEBUG swapped half1 and 2
+    unsigned short half12 = __float2half_rn(acc12);
+    unsigned short half22 = __float2half_rn(acc22);
+    float col_2_f = __int_as_float((((int) half22) << 16) | ((int) half12)); // DEBUG swapped half1 and 2
 
     // Store into the appropriate spot in C (in 1 write as a float)
     int c_block_start_idx = IDX2C(block_row * BLOCK_NROWS, block_col * BLOCK_NCOLS, rows_a);
-    c[c_block_start_idx + IDX2C(thread_row, thread_col, rows_a)] = col_1_f;
-    c[c_block_start_idx + IDX2C(thread_row, thread_col + 1, rows_a)] = col_2_f;
+    c[c_block_start_idx + c_offset1] = col_1_f;
+    c[c_block_start_idx + c_offset2] = col_2_f;
 
 
     // If the grid is not large enough to cover the entire matrix,

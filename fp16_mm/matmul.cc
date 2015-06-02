@@ -230,6 +230,12 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
   }
 
+  if(cublas_time_ms < my_kernel_time_ms) {
+    printf("My kernel was %f%%faster.\n", (1 - my_kernel_time_ms/cublas_time_ms)*100);
+  } else {
+    printf("My kernel was %f%% slower.\n", (my_kernel_time_ms/cublas_time_ms - 1) * 100);
+  }
+
   // Copy C from device to host
   gpuErrChk(cudaMemcpy(h_C_cublas, d_C_f, C_sz_farray, cudaMemcpyDeviceToHost));
 
