@@ -107,6 +107,12 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       // Sync threads so shmem prepared for later accesses.
       __syncthreads();
 
+      //// TRYING NEW THING
+      // Read elem from column in B for later warp shuffling
+      b_col1_item = shmem_B[IDX2C(thread_row, thread_col, BLOCK_NROWS)];
+      b_col2_item = shmem_B[IDX2C(thread_row, thread_col + 1, BLOCK_NROWS)];
+
+
 
       for (int col_idx = 0; col_idx < BLOCK_NCOLS; col_idx += 2) {
         // read 2 fp16's (1 float) from the a block (a11, a21)
@@ -126,14 +132,22 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
         float a12_f = __half2float(a12);
         float a22_f = __half2float(a22);
 
+
         // read 2 fp16's (1 float) from the b block b1 (first row), b2 (next row)
+        //int two_halves3 = __float_as_int(
+        //               shmem_B[IDX2C(col_idx/2, thread_col, BLOCK_NROWS)]);
+        //// Trying warp shuffle
         int two_halves3 = __float_as_int(
-                       shmem_B[IDX2C(col_idx/2, thread_col, BLOCK_NROWS)]);
+                            __shfl(b_col1_item, col_idx/2));
+
         unsigned short b21 = (unsigned short) (two_halves3 >> 16);
         unsigned short b11 = (unsigned short) ((two_halves3 << 16) >> 16);
 
+        //int two_halves4 = __float_as_int(
+        //               shmem_B[IDX2C(col_idx/2, thread_col + 1, BLOCK_NROWS)]);
+        //// Trying warp shuffle
         int two_halves4 = __float_as_int(
-                       shmem_B[IDX2C(col_idx/2, thread_col + 1, BLOCK_NROWS)]);
+                            __shfl(b_col2_item, col_idx/2));
 
         unsigned short b22 = (unsigned short) (two_halves4 >> 16);
         unsigned short b12 = (unsigned short) ((two_halves4 << 16) >> 16);
