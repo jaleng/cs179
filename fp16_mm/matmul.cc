@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 
   // TESTING CODE
 
-  // TODO: create 3 flp16 matrices
+  // We are creating square matrices A, B to test our matrix multiplication.
   int test_size = 128;
   int rows_a = test_size;
   int cols_a = test_size;

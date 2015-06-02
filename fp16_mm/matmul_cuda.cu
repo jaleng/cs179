@@ -27,6 +27,8 @@ __device__ float __half2float (unsigned short x)
 __device__ float __int_as_float (int x)
 __device__ int __float_as_int (float x)
 */
+#define BLOCK_NCOLS 64
+#define BLOCK_NROWS 32
 
 __global__
 void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
@@ -40,16 +42,22 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   int num_block_rows_in_c = rows_a / 32;
   int num_block_cols_in_c = cols_b / 64;
 
-  // TODO(jg): make these constants
-  int block_ncols = 64;
-  int block_nrows = 32;
-
   int block_row = blockIdx.x;
   int block_col = blockIdx.y;
   int thread_row = threadIdx.x;
-  int thread_col = threadIdx.y * 2; // DEBUG added * 2 try to fix prob where last 32 cols not written
+  int thread_col = threadIdx.y * 2;
+  int num_block_cols = cols_a/64;
+
+  int shmem_idx1 = thread_col * BLOCK_NROWS/2 + thread_row;
+  int shmem_idx2 = (thread_col/2 + 32) * BLOCK_NROWS + thread_row;
+
+  int offset1_for_a_to_shmem = IDX2C(thread_row, thread_col/2, rows_a);
+  int offset2_for_a_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_a);
+
+  int offset1_for_b_to_shmem = IDX2C(thread_row, thread_col/2 , rows_b);
+  int offset2_for_b_to_shmem = IDX2C(thread_row, thread_col/2 + 32, rows_b);
+
   while (block_row < num_block_rows_in_c && block_col < num_block_cols_in_c) {
-    int num_block_cols = cols_a/64; // Debug, added /64
 
     // Accumulators for this thread
     float acc11 = 0;
@@ -57,54 +65,56 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     float acc21 = 0;
     float acc22 = 0;
 
-    for (int block_col_idx = 0; block_col_idx < num_block_cols; ++block_col_idx) {
+    int row_in_a = block_row * BLOCK_NROWS;
+    int col_in_b = block_col * BLOCK_NCOLS;
+
+    for (int block_col_idx = 0; 
+             block_col_idx < num_block_cols; 
+           ++block_col_idx) {
       // store A block (block_row, block_col_idx) into shmem
       //// A starts at a, and is column major
       //// We want to store the item in the thread_col column (of the block)
       ////                      and the thread_row row (of the block)
 
-      // int a_block_start = block_col_idx * block_ncols * rows_a + block_row * block_nrows;
-      // int b_block_start = block_col * block_ncols * rows_b + block_col_idx * block_nrows;
-
-      int a_block_start_idx = IDX2C(block_row * block_nrows, 
-                                    block_col_idx * block_ncols, 
+      int a_block_start_idx = IDX2C(row_in_a, 
+                                    block_col_idx * BLOCK_NCOLS, 
                                     rows_a);
-      int b_block_start_idx = IDX2C(block_col_idx * block_nrows,
-                                    block_col * block_ncols,
+      int b_block_start_idx = IDX2C(block_col_idx * BLOCK_NROWS,
+                                    col_in_b,
                                     rows_b);
 
       // Load the first 32 columns
-      shmem_A[IDX2C(thread_row, thread_col/2, block_nrows)] //DEBUG /2 on thread_col
-        = a[a_block_start_idx + IDX2C(thread_row, thread_col/2, rows_a)];
+      shmem_A[shmem_idx1] //DEBUG /2 on thread_col
+        = a[a_block_start_idx + offset1_for_a_to_shmem];
 
       // Load the second 32 columns
-      shmem_A[IDX2C(thread_row, thread_col/2 + 32, block_nrows)]
-        = a[a_block_start_idx + IDX2C(thread_row, thread_col/2 + 32, rows_a)];
+      shmem_A[shmem_idx2]
+        = a[a_block_start_idx + offset2_for_a_to_shmem];
 
       // store B block (block_col_idx, block_col) into shmem
 
       // Load the first 32 columns
-      shmem_B[IDX2C(thread_row, thread_col/2 , block_nrows)]
-        = b[b_block_start_idx + IDX2C(thread_row, thread_col/2 , rows_b)];
+      shmem_B[IDX2C(thread_row, thread_col/2 , BLOCK_NROWS)]
+        = b[b_block_start_idx + offset1_for_b_to_shmem];
 
       // Load the second 32 columns
-      shmem_B[IDX2C(thread_row, thread_col/2 + 32, block_nrows)]
-        = b[b_block_start_idx + IDX2C(thread_row, thread_col/2 + 32, rows_b)];
+      shmem_B[IDX2C(thread_row, thread_col/2 + 32, BLOCK_NROWS)]
+        = b[b_block_start_idx + offset2_for_b_to_shmem];
 
-      // sync threads
+      // Sync threads so shmem prepared for later accesses.
       __syncthreads();
 
 
-      for (int col_idx = 0; col_idx < block_ncols; col_idx += 2) {
+      for (int col_idx = 0; col_idx < BLOCK_NCOLS; col_idx += 2) {
         // read 2 fp16's (1 float) from the a block (a11, a21)
         int two_halves = __float_as_int(
-                           shmem_A[IDX2C(thread_row, col_idx, block_nrows)]);
+                           shmem_A[IDX2C(thread_row, col_idx, BLOCK_NROWS)]);
         unsigned short a21 = (unsigned short) (two_halves >> 16);
         unsigned short a11 = (unsigned short) ((two_halves << 16) >> 16);
 
         // read 2 more (next col) from the a block (a12, a22)
         two_halves = __float_as_int(
-                       shmem_A[IDX2C(thread_row, col_idx + 1, block_nrows)]);
+                       shmem_A[IDX2C(thread_row, col_idx + 1, BLOCK_NROWS)]);
         unsigned short a22 = (unsigned short) (two_halves >> 16);
         unsigned short a12 = (unsigned short) ((two_halves << 16) >> 16);
 
@@ -115,12 +125,12 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
 
         // read 2 fp16's (1 float) from the b block b1 (first row), b2 (next row)
         two_halves = __float_as_int(
-                       shmem_B[IDX2C(col_idx/2, thread_col, block_nrows)]); // DEBUG put /2 after col_idx
+                       shmem_B[IDX2C(col_idx/2, thread_col, BLOCK_NROWS)]); // DEBUG put /2 after col_idx
         unsigned short b21 = (unsigned short) (two_halves >> 16);
         unsigned short b11 = (unsigned short) ((two_halves << 16) >> 16);
 
         two_halves = __float_as_int(
-                       shmem_B[IDX2C(col_idx/2, thread_col + 1, block_nrows)]); // DEBUG put /2 after col_idx
+                       shmem_B[IDX2C(col_idx/2, thread_col + 1, BLOCK_NROWS)]); // DEBUG put /2 after col_idx
 
         unsigned short b22 = (unsigned short) (two_halves >> 16);
         unsigned short b12 = (unsigned short) ((two_halves << 16) >> 16);
@@ -147,7 +157,7 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     float col_2_f = __int_as_float((((int) half2) << 16) | ((int) half1)); // DEBUG swapped half1 and 2
 
     // Store into the appropriate spot in C (in 1 write as a float)
-    int c_block_start_idx = IDX2C(block_row * block_nrows, block_col * block_ncols, rows_a);
+    int c_block_start_idx = IDX2C(block_row * BLOCK_NROWS, block_col * BLOCK_NCOLS, rows_a);
     c[c_block_start_idx + IDX2C(thread_row, thread_col, rows_a)] = col_1_f;
     c[c_block_start_idx + IDX2C(thread_row, thread_col + 1, rows_a)] = col_2_f;
 
