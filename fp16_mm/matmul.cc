@@ -11,7 +11,7 @@
 
 using half_float::half;
 
-print_half_matrix(half *h_p, int nrows, int ncols);
+void print_half_matrix(half *h_p, int nrows, int ncols);
 
 /*
 NOTE: You can use this macro to easily check cuda error codes
@@ -154,17 +154,17 @@ int main(int argc, char *argv[]) {
   half *id_64x64 = new half[64*64];
 
   for (int i = 0; i < 64*64; ++i) {
-    id_64x64[i] = half(1.0); // DEBUG, was 0.0
+    id_64x64[i] = half(0.0); 
   }
-  /* DEBUG, was uncommented
+  
   for (int i = 0; i < 64; ++i) {
     id_64x64[IDX2C(i, i, 64)] = half(1.0);
   }
-  */
+  
 
   half *seq_64x64 = new half[64*64];
   for (int i = 0; i < 64*64; ++i) {
-    seq_64x64[i] = half(1.0); // DEBUG, was half(i);
+    seq_64x64[i] = half(i);
   }
 
   float *id_64x64_fp = (float *) id_64x64;
@@ -188,10 +188,10 @@ int main(int argc, char *argv[]) {
   // Allocate memory for A on device
   // Allocate memory for B on device
   // Allocate memory for C on device
-  float *h_A = id_64x64_fp;
+  float *h_A = seq_64x64_fp;//id_64x64_fp;
   size_t A_sz = (rows_a/2) * cols_a * sizeof(float);
 
-  float *h_B = seq_64x64_fp;
+  float *h_B = id_64x64_fp;//seq_64x64_fp;
   size_t B_sz = (rows_b/2) * cols_b * sizeof(float);
 
   float *h_C = new float[(rows_a/2) * cols_b];
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
   // Print out C -- convert halfs to floats and print those
   half *h_C_hp = (half *) h_C;
   // DEBUG, was uncommented
-  //print_half_matrix(h_C_hp, 64, 64);
+  print_half_matrix(h_C_hp, 64, 64);
 
   // Free host memory
   delete[] id_64x64;
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
 
 }
 
-print_half_matrix(half *h_p, int nrows, int ncols) {
+void print_half_matrix(half *h_p, int nrows, int ncols) {
   printf("cols:    ");
   for (int c = 0; c < ncols; ++c) {
     printf("%15d ", c);
@@ -252,7 +252,7 @@ print_half_matrix(half *h_p, int nrows, int ncols) {
 
   for (int r = 0; r < nrows; ++r) {
     printf("row %3d: ", r);
-    for (int c = 0; c < cols_c; ++c) {
+    for (int c = 0; c < ncols; ++c) {
       printf("%15f ", float(h_p[IDX2C(r, c, nrows)]));
     }
     printf("\n");
