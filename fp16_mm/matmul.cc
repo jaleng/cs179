@@ -188,10 +188,10 @@ int main(int argc, char *argv[]) {
   // Allocate memory for A on device
   // Allocate memory for B on device
   // Allocate memory for C on device
-  float *h_A = seq_64x64_fp;//id_64x64_fp;
+  float *h_A = id_64x64_fp;
   size_t A_sz = (rows_a/2) * cols_a * sizeof(float);
 
-  float *h_B = id_64x64_fp;//seq_64x64_fp;
+  float *h_B = seq_64x64_fp;
   size_t B_sz = (rows_b/2) * cols_b * sizeof(float);
 
   float *h_C = new float[(rows_a/2) * cols_b];
