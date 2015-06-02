@@ -35,20 +35,6 @@ inline void gpuAssert(cudaError_t code,
 }
 
 
-// fills fill with random numbers is [0, 1]. Size is number of elements to
-// assign
-void randomFill(float *fill, int size) {
-  for (int i = 0; i < size; i++) {
-    float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-    fill[i] = r;
-  }
-}
-
-// For the cublas example code
-static __inline__ void modify (cublasHandle_t handle, float *m, int ldm, int n, int p, int q, float alpha, float beta){
-    cublasSscal (handle, n-p, &alpha, &m[IDX2C(p,q,ldm)], ldm);
-    cublasSscal (handle, ldm-p, &beta, &m[IDX2C(p,q,ldm)], 1);
-}
 
 int main(int argc, char *argv[]) {
   cudaEvent_t start;
@@ -67,80 +53,7 @@ int main(int argc, char *argv[]) {
       gpuErrChk(cudaEventDestroy(stop));                    \
     }
 
-  /** Timing example
-   *
-   * // initialize timer
-   * float my_time_ms = -1;
-   * START_TIMER();
-   * // Do thing to be timed
-   * STOP_RECORD_TIMER(my_time_ms);
-   * printf("My time was: %f ms \n", my_time_ms);
-   * END Timing example 
-   */
 
-  // Some cublas example code to get started
-  // START CUBLAS EXAMPLE CODE
-  /*********************************************************
-  float cublas_ex_code_time_ms = -1;
-  START_TIMER();
-#define M 6
-#define N 5
-  cudaError_t cudaStat;    
-  cublasStatus_t stat;
-  cublasHandle_t handle;
-  int i, j;
-  float* devPtrA;
-  float* a = 0;
-  a = (float *)malloc (M * N * sizeof (*a));
-  if (!a) {
-      printf ("host memory allocation failed");
-      return EXIT_FAILURE;
-  }
-  for (j = 0; j < N; j++) {
-      for (i = 0; i < M; i++) {
-          a[IDX2C(i,j,M)] = (float)(i * M + j + 1);
-      }
-  }
-  cudaStat = cudaMalloc ((void**)&devPtrA, M*N*sizeof(*a));
-  if (cudaStat != cudaSuccess) {
-      printf ("device memory allocation failed");
-      return EXIT_FAILURE;
-  }
-  stat = cublasCreate(&handle);
-  if (stat != CUBLAS_STATUS_SUCCESS) {
-      printf ("CUBLAS initialization failed\n");
-      return EXIT_FAILURE;
-  }
-  stat = cublasSetMatrix (M, N, sizeof(*a), a, M, devPtrA, M);
-  if (stat != CUBLAS_STATUS_SUCCESS) {
-      printf ("data download failed");
-      cudaFree (devPtrA);
-      cublasDestroy(handle);
-      return EXIT_FAILURE;
-  }
-  modify (handle, devPtrA, M, N, 1, 2, 16.0f, 12.0f);
-  stat = cublasGetMatrix (M, N, sizeof(*a), devPtrA, M, a, M);
-  if (stat != CUBLAS_STATUS_SUCCESS) {
-      printf ("data upload failed");
-      cudaFree (devPtrA);
-      cublasDestroy(handle);
-      return EXIT_FAILURE;
-  }
-  cudaFree (devPtrA);
-  cublasDestroy(handle);
-  for (j = 0; j < N; j++) {
-      for (i = 0; i < M; i++) {
-          printf ("%7.0f", a[IDX2C(i,j,M)]);
-      }
-      printf ("\n");
-  }
-  free(a);
-  // return EXIT_SUCCESS;
-  // END CUBLAS EXAMPLE CODE
-  STOP_RECORD_TIMER(cublas_ex_code_time_ms);
-  printf("My time was: %f ms \n", cublas_ex_code_time_ms);
-
-  *****************************************************************************/
 
   // TESTING CODE
 
@@ -153,6 +66,7 @@ int main(int argc, char *argv[]) {
   int rows_c = test_size;
   int cols_c = test_size;
 
+  // Create an identity matrix (array of fp16's)
   half *id = new half[test_size*test_size];
 
   for (int i = 0; i < test_size*test_size; ++i) {
@@ -163,58 +77,74 @@ int main(int argc, char *argv[]) {
     id[IDX2C(i, i, test_size)] = half(1.0);
   }
   
-
+  // Create a matrix where the element is the column-major index
+  // (array of fp16's)
+  // Note that the values won't be exact as it is a fp16 approximation
   half *seq = new half[test_size*test_size];
   for (int i = 0; i < test_size*test_size; ++i) {
     seq[i] = half(i);
   }
 
-  float *id_fp = (float *) id;
-  float *seq_fp = (float *) seq;
+  // Create float*'s that point to the beginning of the fp16-arrays
+  float *id_half_fp = (float *) id;
+  float *seq_half_fp = (float *) seq;
 
 
-  // DEBUG: try printing out the matrices we created
+  //// DEBUG: try printing out the matrices we created
   //printf("\n\nPrinting out id.\n");
   //print_half_matrix(id, test_size, test_size);
 
   //printf("\n\nPrinting out seq.\n");
   //print_half_matrix(seq, test_size, test_size);
 
+  // Assign half-array pointers for A and B, the matrices to be multiplied.
   half *a_hp = id;
   half *b_hp = seq;
 
 
-  // Do CUBLAS multiplication
-  float *h_A_f = new float[test_size*test_size];
+  // Prepare the float-arrays for A and B to be used by cublas mm.
+
+  // Host A float array
+  float *h_A_farray = new float[test_size*test_size];
   for (int c = 0; c < cols_a; ++c) {
     for (int r = 0; r < rows_a; ++r) {
-      h_A_f[IDX2C(r, c, rows_a)] = a_hp[IDX2C(r, c, rows_a)];
+      h_A_farray[IDX2C(r, c, rows_a)] = a_hp[IDX2C(r, c, rows_a)];
     }
   }
 
-  float *h_B_f = new float[test_size*test_size];
+  //// DEBUG: print host A float array to check for correctness
+  //printf("***Printing host A float array. Should be id.\n");
+  //print_single_matrix(h_A_farray, rows_a, cols_a);
+
+  // Host B float array
+  float *h_B_farray = new float[test_size*test_size];
   for (int c = 0; c < cols_b; ++c) {
     for (int r = 0; r < rows_b; ++r) {
-      h_B_f[IDX2C(r, c, rows_b)] = b_hp[IDX2C(r, c, rows_b)];
+      h_B_farray[IDX2C(r, c, rows_b)] = b_hp[IDX2C(r, c, rows_b)];
     }
   }
 
+  //// DEBUG: print host B float array to check for correctness
+  //printf("***Printing host B float array. Should be seq.\n");
+  //print_single_matrix(h_B_farray, rows_b, cols_b);
 
 
-  // Allocate memory for A on device
-  // Allocate memory for B on device
-  // Allocate memory for C on device
-  float *h_A = id_fp;
-  size_t A_sz = (rows_a/2) * cols_a * sizeof(float);
+  // Organize data on host.
+  float *h_A_harray = id_half_fp;
+  size_t A_sz_harray = (rows_a/2) * cols_a * sizeof(float);
+  size_t A_sz_farray = A_sz_harray * 2;
 
-  float *h_B = seq_fp;
-  size_t B_sz = (rows_b/2) * cols_b * sizeof(float);
+  float *h_B_harray = seq_half_fp;
+  size_t B_sz_harray = (rows_b/2) * cols_b * sizeof(float);
+  size_t B_sz_farray = B_sz_harray * 2;
 
-  float *h_C_me = new float[(rows_a/2) * cols_b];
+  // Allocate host memory for outputs for my kernel and cublas.
+  float *h_C_mymmul = new float[(rows_a/2) * cols_b];
   float *h_C_cublas = new float[rows_a * cols_b];
-  size_t C_sz = (rows_a/2) * cols_b * sizeof(float);
-  size_t C_sz_cublas = rows_a * cols_b * sizeof(float);
+  size_t C_sz_harray = (rows_a/2) * cols_b * sizeof(float);
+  size_t C_sz_farray = C_sz_harray * 2;
 
+  // Device pointers
   float *d_A_h;
   float *d_B_h;
   float *d_C_h;
@@ -224,25 +154,32 @@ int main(int argc, char *argv[]) {
   float *d_C_f;
 
 
-  gpuErrChk(cudaMalloc(&d_A_h, A_sz));
-  gpuErrChk(cudaMalloc(&d_B_h, B_sz));
-  gpuErrChk(cudaMalloc(&d_C_h, C_sz));
+  // Allocate memory on device
+  gpuErrChk(cudaMalloc(&d_A_h, A_sz_harray));
+  gpuErrChk(cudaMalloc(&d_B_h, B_sz_harray));
+  gpuErrChk(cudaMalloc(&d_C_h, C_sz_harray));
 
-  gpuErrChk(cudaMalloc(&d_A_f, A_sz*2));
-  gpuErrChk(cudaMalloc(&d_B_f, B_sz*2));
-  gpuErrChk(cudaMalloc(&d_C_f, C_sz*2));
+  gpuErrChk(cudaMalloc(&d_A_f, A_sz_farray));
+  gpuErrChk(cudaMalloc(&d_B_f, B_sz_farray));
+  gpuErrChk(cudaMalloc(&d_C_f, C_sz_farray));
 
   // Copy A to device
-  gpuErrChk(cudaMemcpy(d_A_h, h_A, A_sz, cudaMemcpyHostToDevice));
-  gpuErrChk(cudaMemcpy(d_A_f, h_A_f, A_sz, cudaMemcpyHostToDevice));
-
+  gpuErrChk(cudaMemcpy(d_A_h, h_A_harray, A_sz_harray, cudaMemcpyHostToDevice));
+  gpuErrChk(cudaMemcpy(d_A_f, h_A_farray, A_sz_farray, cudaMemcpyHostToDevice));
 
   // Copy B to device
-  gpuErrChk(cudaMemcpy(d_B_h, h_B, B_sz, cudaMemcpyHostToDevice));
+  gpuErrChk(cudaMemcpy(d_B_h, h_B_harray, B_sz_harray, cudaMemcpyHostToDevice));
+  gpuErrChk(cudaMemcpy(d_B_f, h_B_farray, B_sz_farray, cudaMemcpyHostToDevice));
 
   // DEBUG, clear out C
-  gpuErrChk(cudaMemset(d_C_h, 1, C_sz));
+  gpuErrChk(cudaMemset(d_C_h, 0, C_sz_harray));
+  gpuErrChk(cudaMemset(d_C_f, 0, C_sz_farray));
 
+
+  /*****************************************************************************
+   ***  MY KERNEL
+   *****************************************************************************
+   */
   // Run kernel, time it
   float my_kernel_time_ms = -1;
   START_TIMER();
@@ -251,16 +188,15 @@ int main(int argc, char *argv[]) {
   printf("My kernel time was %fms.\n", my_kernel_time_ms);
 
 
-
   // Copy C from device to host
-  gpuErrChk(cudaMemcpy(h_C_me, d_C_h, C_sz, cudaMemcpyDeviceToHost));
+  gpuErrChk(cudaMemcpy(h_C_mymmul, d_C_h, C_sz_harray, cudaMemcpyDeviceToHost));
 
 
-  // CUBLAS stuff
-
-
-  // Call the cublas stuff
-  cudaError_t cudaStat;
+  /*****************************************************************************
+   ***  CUBLAS
+   *****************************************************************************
+   */
+  // Call the cublas initialization
   cublasStatus_t stat;
   cublasHandle_t handle;
 
@@ -272,8 +208,9 @@ int main(int argc, char *argv[]) {
 
   float alpha = 1.0;
   float beta = 0.0;
-  START_TIMER();
   float cublas_time_ms = -1;
+
+  START_TIMER();
   stat = cublasSgemm(handle,
                      CUBLAS_OP_N,
                      CUBLAS_OP_N,
@@ -294,7 +231,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Copy C from device to host
-  gpuErrChk(cudaMemcpy(h_C_cublas, d_C_f, C_sz_cublas, cudaMemcpyDeviceToHost));
+  gpuErrChk(cudaMemcpy(h_C_cublas, d_C_f, C_sz_farray, cudaMemcpyDeviceToHost));
 
 
   // Free A on device
@@ -311,9 +248,8 @@ int main(int argc, char *argv[]) {
   // Free C on device
   gpuErrChk(cudaFree(d_C_f));
 
-  // Print out C -- convert halfs to floats and print those
-  half *h_C_hp = (half *) h_C_me;
-  // DEBUG, was uncommented
+  //// DEBUG: Print out the resulting matrices
+  //half *h_C_hp = (half *) h_C_mymmul;
   //printf("\n\n*******Result from my kernel\n\n");
   //print_half_matrix(h_C_hp, test_size, test_size);
   //printf("\n\n*******Result from cublas kernel\n\n");
@@ -325,7 +261,8 @@ int main(int argc, char *argv[]) {
   // Free host memory
   delete[] id;
   delete[] seq;
-  delete[] h_C_me;
+  delete[] h_C_mymmul;
+  delete[] h_C_cublas;
 
 }
 
