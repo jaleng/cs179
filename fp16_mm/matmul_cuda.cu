@@ -158,15 +158,13 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
         float b22_f = __half2float(b22);
 
         acc11 += a11_f * b11_f;
-        acc11 += a12_f * b21_f;
-
         acc21 += a21_f * b11_f;
-        acc21 += a22_f * b21_f;
-
         acc12 += a11_f * b12_f;
-        acc12 += a12_f * b22_f;
-
         acc22 += a21_f * b12_f;
+
+        acc11 += a12_f * b21_f;
+        acc21 += a22_f * b21_f;
+        acc12 += a12_f * b22_f;
         acc22 += a22_f * b22_f;
       }
     }
