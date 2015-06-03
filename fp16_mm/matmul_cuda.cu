@@ -66,10 +66,15 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
     int col_in_b = block_col * BLOCK_NCOLS;
 
     // Accumulators for this thread
-    float acc11 = 0;
-    float acc12 = 0;
-    float acc21 = 0;
-    float acc22 = 0;
+    float acc11_i = 0;
+    float acc12_i = 0;
+    float acc21_i = 0;
+    float acc22_i = 0;
+
+    float acc11_ii = 0;
+    float acc12_ii = 0;
+    float acc21_ii = 0;
+    float acc22_ii = 0;
 
     for (int block_col_idx = 0; 
              block_col_idx < num_block_cols; 
@@ -106,75 +111,116 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
 
       //// TRYING NEW THING
       // Read elem from column in B for later warp shuffling
-      float b_col1_item = b[b_block_start_idx + IDX2C(thread_row, thread_col, rows_b)];
-      float b_col2_item = b[b_block_start_idx + IDX2C(thread_row, thread_col + 1, rows_b)];
+      float b_col1_item_i = b[b_block_start_idx + IDX2C(thread_row, thread_col, rows_b)];
+      float b_col1_item_ii = b[b_block_start_idx + IDX2C(thread_row + 1, thread_col, rows_b)];
+      float b_col2_item_i = b[b_block_start_idx + IDX2C(thread_row, thread_col + 1, rows_b)];
+      float b_col2_item_ii = b[b_block_start_idx + IDX2C(thread_row + 1, thread_col + 1, rows_b)];
 
       // Sync threads so shmem prepared for later accesses.
       __syncthreads();
 
+      #pragma unroll
+      for (int col_idx = 0; col_idx < BLOCK_NCOLS; col_idx += 4) {
+        int thi1_i = IDX2C(thread_row, col_idx, BLOCK_NROWS);
+        int thi1_ii = IDX2C(thread_row + 1, col_idx, BLOCK_NROWS);
 
-      for (int col_idx = 0; col_idx < BLOCK_NCOLS; col_idx += 2) {
-        int thi1 = IDX2C(thread_row, col_idx, BLOCK_NROWS);
-        int thi2 = IDX2C(thread_row, col_idx + 1, BLOCK_NROWS);
+        int thi2_i = IDX2C(thread_row, col_idx + 1, BLOCK_NROWS);
+        int thi2_ii = IDX2C(thread_row + 1, col_idx + 1, BLOCK_NROWS);
+
         // read 2 fp16's (1 float) from the a block (a11, a21)
-        int two_halves1 = __float_as_int(shmem_A[thi1]);
+        int two_halves1_i = __float_as_int(shmem_A[thi1_i]);
 
         // read 2 more (next col) from the a block (a12, a22)
-        int two_halves2 = __float_as_int(shmem_A[thi2]);
+        int two_halves2_i = __float_as_int(shmem_A[thi2_i]);
 
         //// Trying warp shuffle
-        int two_halves3 = __float_as_int(
-                            __shfl(b_col1_item, col_idx/2));
+        int two_halves3_i = __float_as_int(
+                            __shfl(b_col1_item_i, col_idx/2));
 
         //int two_halves4 = __float_as_int(
         //               shmem_B[IDX2C(col_idx/2, thread_col + 1, BLOCK_NROWS)]);
         //// Trying warp shuffle
-        int two_halves4 = __float_as_int(
-                            __shfl(b_col2_item, col_idx/2));
+        int two_halves4_i = __float_as_int(
+                            __shfl(b_col2_item_i, col_idx/2));
 
-        unsigned short a11 = (unsigned short) ((two_halves1 << 16) >> 16);
-        unsigned short a21 = (unsigned short) (two_halves1 >> 16);
-        unsigned short a12 = (unsigned short) ((two_halves2 << 16) >> 16);
-        unsigned short a22 = (unsigned short) (two_halves2 >> 16);
+        // ii stuff
+        int two_halves1_ii = __float_as_int(shmem_A[thi1_ii]);
+        int two_halves2_ii = __float_as_int(shmem_A[thi2_ii]);
+        int two_halves3_ii = __float_as_int(
+                            __shfl(b_col1_item_ii, col_idx/2));
+        int two_halves4_ii = __float_as_int(
+                            __shfl(b_col2_item_ii, col_idx/2));
 
-        // read 2 fp16's (1 float) from the b block b1 (first row), b2 (next row)
-        //int two_halves3 = __float_as_int(
-        //               shmem_B[IDX2C(col_idx/2, thread_col, BLOCK_NROWS)]);
 
-        unsigned short b21 = (unsigned short) (two_halves3 >> 16);
-        unsigned short b11 = (unsigned short) ((two_halves3 << 16) >> 16);
+        unsigned short a11_i = (unsigned short) ((two_halves1_i << 16) >> 16);
+        unsigned short a21_i = (unsigned short) (two_halves1_i >> 16);
+        unsigned short a12_i = (unsigned short) ((two_halves2_i << 16) >> 16);
+        unsigned short a22_i = (unsigned short) (two_halves2_i >> 16);
 
-        unsigned short b22 = (unsigned short) (two_halves4 >> 16);
-        unsigned short b12 = (unsigned short) ((two_halves4 << 16) >> 16);
+        unsigned short b21_i = (unsigned short) (two_halves3_i >> 16);
+        unsigned short b11_i = (unsigned short) ((two_halves3_i << 16) >> 16);
+        unsigned short b22_i = (unsigned short) (two_halves4_i >> 16);
+        unsigned short b12_i = (unsigned short) ((two_halves4_i << 16) >> 16);
 
-        float a11_f = __half2float(a11);
-        float a21_f = __half2float(a21);
-        float a12_f = __half2float(a12);
-        float a22_f = __half2float(a22);
+        //ii stuff
+        unsigned short a11_ii = (unsigned short) ((two_halves1_ii << 16) >> 16);
+        unsigned short a21_ii = (unsigned short) (two_halves1_ii >> 16);
+        unsigned short a12_ii = (unsigned short) ((two_halves2_ii << 16) >> 16);
+        unsigned short a22_ii = (unsigned short) (two_halves2_ii >> 16);
 
-        float b11_f = __half2float(b11);
-        float b21_f = __half2float(b21);
-        float b12_f = __half2float(b12);
-        float b22_f = __half2float(b22);
+        unsigned short b21_ii = (unsigned short) (two_halves3_ii >> 16);
+        unsigned short b11_ii = (unsigned short) ((two_halves3_ii << 16) >> 16);
+        unsigned short b22_ii = (unsigned short) (two_halves4_ii >> 16);
+        unsigned short b12_ii = (unsigned short) ((two_halves4_ii << 16) >> 16);
 
-        acc11 += a11_f * b11_f;
-        acc21 += a21_f * b11_f;
-        acc12 += a11_f * b12_f;
-        acc22 += a21_f * b12_f;
+        float a11_f_i = __half2float(a11_i);
+        float a21_f_i = __half2float(a21_i);
+        float a12_f_i = __half2float(a12_i);
+        float a22_f_i = __half2float(a22_i);
 
-        acc11 += a12_f * b21_f;
-        acc21 += a22_f * b21_f;
-        acc12 += a12_f * b22_f;
-        acc22 += a22_f * b22_f;
+        float b11_f_i = __half2float(b11_i);
+        float b21_f_i = __half2float(b21_i);
+        float b12_f_i = __half2float(b12_i);
+        float b22_f_i = __half2float(b22_i);
+
+        float a11_f_ii = __half2float(a11_ii);
+        float a21_f_ii = __half2float(a21_ii);
+        float a12_f_ii = __half2float(a12_ii);
+        float a22_f_ii = __half2float(a22_ii);
+
+        float b11_f_ii = __half2float(b11_ii);
+        float b21_f_ii = __half2float(b21_ii);
+        float b12_f_ii = __half2float(b12_ii);
+        float b22_f_ii = __half2float(b22_ii);
+
+        acc11_i += a11_f_i * b11_f_i;
+        acc21_i += a21_f_i * b11_f_i;
+        acc12_i += a11_f_i * b12_f_i;
+        acc22_i += a21_f_i * b12_f_i;
+
+        acc11_ii += a11_f_ii * b11_f_ii;
+        acc21_ii += a21_f_ii * b11_f_ii;
+        acc12_ii += a11_f_ii * b12_f_ii;
+        acc22_ii += a21_f_ii * b12_f_ii;
+
+        acc11_i += a12_f_i * b21_f_i;
+        acc21_i += a22_f_i * b21_f_i;
+        acc12_i += a12_f_i * b22_f_i;
+        acc22_i += a22_f_i * b22_f_i;
+
+        acc11_ii += a12_f_ii * b21_f_ii;
+        acc21_ii += a22_f_ii * b21_f_ii;
+        acc12_ii += a12_f_ii * b22_f_ii;
+        acc22_ii += a22_f_ii * b22_f_ii;
       }
     }
 
     // Prepare to store values
-    unsigned short half11 = __float2half_rn(acc11);
-    unsigned short half21 = __float2half_rn(acc21);
+    unsigned short half11 = __float2half_rn(acc11_i + acc11_ii);
+    unsigned short half21 = __float2half_rn(acc21_i + acc21_ii);
 
-    unsigned short half12 = __float2half_rn(acc12);
-    unsigned short half22 = __float2half_rn(acc22);
+    unsigned short half12 = __float2half_rn(acc12_i + acc12_ii);
+    unsigned short half22 = __float2half_rn(acc22_i + acc22_ii);
 
     float col_1_f = __int_as_float((((int) half21) << 16) | ((int) half11)); // DEBUG swapped half1 and 2
     float col_2_f = __int_as_float((((int) half22) << 16) | ((int) half12)); // DEBUG swapped half1 and 2
