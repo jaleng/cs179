@@ -112,9 +112,9 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       //// TRYING NEW THING
       // Read elem from column in B for later warp shuffling
       float b_col1_item_i = b[b_block_start_idx + IDX2C(thread_row, thread_col, rows_b)];
-      float b_col1_item_ii = b[b_block_start_idx + IDX2C(thread_row + 1, thread_col, rows_b)];
+      //float b_col1_item_ii = b[b_block_start_idx + IDX2C(thread_row + 1, thread_col, rows_b)];
       float b_col2_item_i = b[b_block_start_idx + IDX2C(thread_row, thread_col + 1, rows_b)];
-      float b_col2_item_ii = b[b_block_start_idx + IDX2C(thread_row + 1, thread_col + 1, rows_b)];
+      //float b_col2_item_ii = b[b_block_start_idx + IDX2C(thread_row + 1, thread_col + 1, rows_b)];
 
       // Sync threads so shmem prepared for later accesses.
       __syncthreads();
@@ -122,10 +122,10 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
       #pragma unroll
       for (int col_idx = 0; col_idx < BLOCK_NCOLS; col_idx += 4) {
         int thi1_i = IDX2C(thread_row, col_idx, BLOCK_NROWS);
-        int thi1_ii = IDX2C(thread_row + 1, col_idx, BLOCK_NROWS);
+        int thi1_ii = IDX2C(thread_row, col_idx + 2, BLOCK_NROWS);
 
         int thi2_i = IDX2C(thread_row, col_idx + 1, BLOCK_NROWS);
-        int thi2_ii = IDX2C(thread_row + 1, col_idx + 1, BLOCK_NROWS);
+        int thi2_ii = IDX2C(thread_row, col_idx + 3, BLOCK_NROWS);
 
         // read 2 fp16's (1 float) from the a block (a11, a21)
         int two_halves1_i = __float_as_int(shmem_A[thi1_i]);
@@ -147,9 +147,9 @@ void matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
         int two_halves1_ii = __float_as_int(shmem_A[thi1_ii]);
         int two_halves2_ii = __float_as_int(shmem_A[thi2_ii]);
         int two_halves3_ii = __float_as_int(
-                            __shfl(b_col1_item_ii, col_idx/2));
+                            __shfl(b_col1_item_i, col_idx/2  + 1));
         int two_halves4_ii = __float_as_int(
-                            __shfl(b_col2_item_ii, col_idx/2));
+                            __shfl(b_col2_item_i, col_idx/2 + 1));
 
 
         unsigned short a11_i = (unsigned short) ((two_halves1_i << 16) >> 16);
