@@ -244,6 +244,30 @@ matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
   }
 }
 
+
+#define BLOCK_NROWS2 128
+#define BLOCK_NCOLS2 128
+/*
+__global__ void 
+//__launch_bounds__(1024, 2)
+matmulKernel2(float *a, float *b, float *c, int rows_a, int cols_a,
+                  int rows_b, int cols_b) {
+  __shared__ float shmem[32*64];
+
+  // rows_a is the number of rows of the fp16 matrix
+  // rows_b is the number of rows of the fp16 matrix
+
+  float * shmem_A = shmem;
+
+  // The block
+  int num_block_rows_in_c = rows_a / BLOCK_NROWS2;
+  int num_block_cols_in_c = cols_b / BLOCK_NCOLS2;
+
+
+
+}
+//*/
+
 void run_matmul_kernel(float *a, float *b, float *c, 
                        int rows_a, int cols_a, int rows_b, int cols_b) {
   dim3 blockSize(32,32);
