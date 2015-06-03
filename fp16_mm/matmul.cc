@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   // TESTING CODE
 
   // We are creating square matrices A, B to test our matrix multiplication.
-  int test_size = 4096;
+  int test_size = 128;
   int rows_a = test_size;
   int cols_a = test_size;
   int rows_b = test_size;
