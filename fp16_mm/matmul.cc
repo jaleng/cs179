@@ -34,7 +34,14 @@ inline void gpuAssert(cudaError_t code,
   }
 }
 
-
+// fills fill with random numbers is [0, 1]. Size is number of elements to
+// assign
+void randomFill(float *fill, int size) {
+  for (int i = 0; i < size; i++) {
+    float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    fill[i] = r;
+  }
+}
 
 int main(int argc, char *argv[]) {
   cudaEvent_t start;
@@ -65,6 +72,24 @@ int main(int argc, char *argv[]) {
   int cols_b = test_size;
   int rows_c = test_size;
   int cols_c = test_size;
+
+  // Make 2 random matrices
+  float *randA_farray = new float[test_size*test_size];
+  float *randB_farray = new float[test_size*test_size];
+
+  randomFill(randA_farray, test_size*test_size);
+  randomFill(randB_farray, test_size*test_size);
+
+  half *randA_harray = new half[test_size*test_size];
+  half *randB_harray = new half[test_size*test_size];
+  float *randA_harray_fp = randA_harray;
+  float *randB_harray_fp = randB_harray;
+
+  for (int i = 0; i < test_size*test_size; ++i) {
+    randA_harray[i] = half(randA_farray[i]);
+    randB_harray[i] = half(randB_farray[i]);
+  }
+
 
   // Create an identity matrix (array of fp16's)
   half *id = new half[test_size*test_size];
@@ -98,8 +123,8 @@ int main(int argc, char *argv[]) {
   //print_half_matrix(seq, test_size, test_size);
 
   // Assign half-array pointers for A and B, the matrices to be multiplied.
-  half *a_hp = id;
-  half *b_hp = seq;
+  half *a_hp = randA_harray; //id;
+  half *b_hp = randB_harray; //seq;
 
 
   // Prepare the float-arrays for A and B to be used by cublas mm.
@@ -130,11 +155,11 @@ int main(int argc, char *argv[]) {
 
 
   // Organize data on host.
-  float *h_A_harray = seq_half_fp;//id_half_fp;
+  float *h_A_harray = randA_harray_fp; //seq_half_fp;//id_half_fp;
   size_t A_sz_harray = (rows_a/2) * cols_a * sizeof(float);
   size_t A_sz_farray = A_sz_harray * 2;
 
-  float *h_B_harray = id_half_fp;//seq_half_fp;
+  float *h_B_harray = randB_harray_fp; //id_half_fp;//seq_half_fp;
   size_t B_sz_harray = (rows_b/2) * cols_b * sizeof(float);
   size_t B_sz_farray = B_sz_harray * 2;
 
@@ -263,6 +288,28 @@ int main(int argc, char *argv[]) {
 
   // Cleanup cublas
   cublasDestroy(handle);
+
+
+  // Compare results
+  bool correct = true;
+  half threshold = 0.05;
+  half diff = -1;
+
+  half *h_C_mymmul_hp = h_C_mymmul;
+  for (int i = 0; i < test_size*test_size){
+    diff = abs(h_C_mymmul_hp[i] - half(h_C_cublas[i]));
+    if (diff > threshold) {
+      correct = false;
+      break;
+    }
+  }
+
+  if (correct == false) {
+    printf("The results are off, a diff was %f\n", float(diff));
+  } else {
+    printf("The results were approximately the same!\n");
+  }
+
 
   // Free host memory
   delete[] id;
