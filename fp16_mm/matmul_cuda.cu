@@ -31,7 +31,7 @@ __device__ int __float_as_int (float x)
 #define BLOCK_NROWS 32
 
 __global__ void 
-__launch_bounds__(1024, 2)
+//__launch_bounds__(1024, 2)
 matmulKernel(float *a, float *b, float *c, int rows_a, int cols_a,
                   int rows_b, int cols_b) {
   __shared__ float shmem[32*64];
