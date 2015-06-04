@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
   // TESTING CODE
 
   // We are creating square matrices A, B to test our matrix multiplication.
-  int test_size = 128;
+  int test_size = 4096;
   int rows_a = test_size;
   int cols_a = test_size;
   int rows_b = test_size;
@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
 
   half *randA_harray = new half[test_size*test_size];
   half *randB_harray = new half[test_size*test_size];
-  float *randA_harray_fp = randA_harray;
-  float *randB_harray_fp = randB_harray;
+  float *randA_harray_fp = (float *) randA_harray;
+  float *randB_harray_fp = (float *) randB_harray;
 
   for (int i = 0; i < test_size*test_size; ++i) {
     randA_harray[i] = half(randA_farray[i]);
@@ -205,10 +205,12 @@ int main(int argc, char *argv[]) {
    ***  MY KERNEL
    *****************************************************************************
    */
+  int rows_a_ = rows_a/2;
+  int rows_b_ = rows_b/2;
   // Run kernel, time it
   float my_kernel_time_ms = -1;
   START_TIMER();
-  run_matmul_kernel(d_A_h, d_B_h, d_C_h, rows_a/2, cols_a, rows_b/2, cols_b);
+  run_matmul_kernel(d_A_h, d_B_h, d_C_h, rows_a_, cols_a, rows_b_, cols_b);
   STOP_RECORD_TIMER(my_kernel_time_ms);
   printf("My kernel time was %fms.\n", my_kernel_time_ms);
 
@@ -292,19 +294,18 @@ int main(int argc, char *argv[]) {
 
   // Compare results
   bool correct = true;
-  half threshold = 0.05;
-  half diff = -1;
+  half threshold = half(0.05f);
+  half diff = half(-1.f);
 
-  half *h_C_mymmul_hp = h_C_mymmul;
-  for (int i = 0; i < test_size*test_size){
-    diff = abs(h_C_mymmul_hp[i] - half(h_C_cublas[i]));
-    if (diff > threshold) {
-      correct = false;
-      break;
+  half *h_C_mymmul_hp = (half *) h_C_mymmul;
+  for (int i = 0; i < test_size*test_size; ++i){
+    half dist = abs(h_C_mymmul_hp[i] - half(h_C_cublas[i]));
+    if (dist > diff) {
+      dist = diff;
     }
   }
 
-  if (correct == false) {
+  if (diff > threshold) {
     printf("The results are off, a diff was %f\n", float(diff));
   } else {
     printf("The results were approximately the same!\n");
